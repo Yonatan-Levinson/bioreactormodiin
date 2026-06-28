@@ -227,7 +227,7 @@
 <div class="toast" id="toast"></div>
 <script>
 "use strict";
-let CLOUD_URL="https://script.google.com/macros/s/AKfycbyIiFWFH1xRF75XwCEwKRH2DJK1MUdkbt-qQfz93UzzV91KX1LsybQc15lxXIBTTjeqvg/exec";
+let CLOUD_URL="";
 const PALETTE=[{name:"Leaf",c:"#5a9d2f"},{name:"Berry",c:"#d8483b"},{name:"Apricot",c:"#e0852b"},{name:"Sky",c:"#3a8fcc"},{name:"Violet",c:"#8a63c4"},{name:"Slate",c:"#6c7a82"}];
 const DEFAULT_STATIONS=[{id:"dasgip",name:"Dasgip"},{id:"mf1",name:"MF1"},{id:"mf2",name:"MF2"},{id:"mf3",name:"MF3"}];
 const KEY="novella_bioreactor_v2",URLKEY="novella_cloud_url";
@@ -280,7 +280,7 @@ function save(push=true){try{localStorage.setItem(KEY,JSON.stringify(state));}ca
 function flashSaved(){const el=document.getElementById("saveState");if(!el)return;el.textContent=cloud.on?"Synced ✓":"Saved on this device ✓";clearTimeout(saveTimer);saveTimer=setTimeout(()=>{el.textContent=cloud.on?"☁ Live — shared with team":"This device only";},1500);}
 
 async function cloudInit(){if(!CLOUD_URL){updateCloudUI();return;}cloud.on=true;updateCloudUI();await cloudPull(true);cloud.polling=setInterval(()=>cloudPull(false),5000);}
-async function cloudPull(initial){if(!CLOUD_URL)return;try{const res=await fetch(CLOUD_URL+"?action=get&t="+Date.now());if(!res.ok)throw new Error(res.status);const data=await res.json();if(data&&data.runs){const incoming=JSON.stringify({s:data.stations,r:data.runs,t:data.tasks});if(incoming!==cloud.lastHash&&incoming!==dataHash()){state={stations:data.stations||DEFAULT_STATIONS,runs:data.runs||[],tasks:data.tasks||[]};localStorage.setItem(KEY,JSON.stringify(state));render();if(!initial)toast("Updated from team");}cloud.lastHash=incoming;}}catch(e){const ss=document.getElementById("saveState");if(ss)ss.textContent="⚠ Sync paused — retrying";}}
+async function cloudPull(initial){if(!CLOUD_URL)return;try{const res=await fetch(CLOUD_URL+"?action=get&t="+Date.now());if(!res.ok)throw new Error(res.status);const data=await res.json();if(data&&data.runs){const incoming=JSON.stringify({s:data.stations,r:data.runs,t:data.tasks});if(incoming!==cloud.lastHash&&incoming!==dataHash()){state={stations:(data.stations&&data.stations.length)?data.stations:structuredClone(DEFAULT_STATIONS),runs:data.runs||[],tasks:data.tasks||[]};localStorage.setItem(KEY,JSON.stringify(state));render();if(!initial)toast("Updated from team");}cloud.lastHash=incoming;}}catch(e){const ss=document.getElementById("saveState");if(ss)ss.textContent="⚠ Sync paused — retrying";}}
 let pushTimer;
 function cloudPush(){clearTimeout(pushTimer);pushTimer=setTimeout(async()=>{try{const body=JSON.stringify({stations:state.stations,runs:state.runs,tasks:state.tasks});cloud.lastHash=JSON.stringify({s:state.stations,r:state.runs,t:state.tasks});await fetch(CLOUD_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body});}catch(e){const ss=document.getElementById("saveState");if(ss)ss.textContent="⚠ Couldn't sync — saved locally";}},400);}
 function updateCloudUI(){const note=document.getElementById("cloudNote"),btn=document.getElementById("connectCloud");if(cloud.on){note.innerHTML="<b>Cloud sync is ON.</b> Everyone on the shared link sees changes live.";btn.textContent="⛅ Cloud settings…";const ss=document.getElementById("saveState");if(ss)ss.textContent="☁ Live — shared with team";}else{note.innerHTML="<b>Storage:</b> this device only. Connect a Google Sheet to share live.";btn.textContent="⛅ Connect cloud sync…";}}
@@ -436,12 +436,13 @@ function swatchHTML(sel){return `<div class="swatches">`+PALETTE.map(p=>`<div cl
 
 function openRunModal(run,presetDate){
   const isNew=!run;
+  if(!state.stations||state.stations.length===0){state.stations=structuredClone(DEFAULT_STATIONS);save();}
   const r=run||{id:uid(),station:state.stations[0].id,title:"",start:presetDate||iso(anchor),end:endFromDuration(presetDate||iso(anchor),7),color:PALETTE[0].c,phase:"",notes:"",deps:[]};
   const others=state.runs.filter(x=>x.id!==r.id);
   modal.innerHTML=`<h2>${isNew?"New run":"Edit run"}<button class="x" id="mx">×</button></h2>
     <div class="fld"><label>Run name</label><input id="f-title" value="${esc(r.title)}" placeholder="e.g. Strawberry batch 12 — DO cascade"></div>
     <div class="fld"><label>Station</label><select id="f-station">${state.stations.map(s=>`<option value="${s.id}"${s.id===r.station?" selected":""}>${s.name}</option>`).join("")}</select></div>
-    <div class="fld row"><div><label>Start</label><input type="date" id="f-start" value="${r.start}"></div><div><label>Duration <span class="sub">calendar days</span></label><input type="number" id="f-dur" min="1" value="${durOf(r)}"></div></div>
+    <div class="fld row"><div><label>Start</label><input type="date" id="f-start" value="${r.start}"></div><div><label>End</label><input type="date" id="f-end" value="${r.end}"></div><div><label>Duration <span class="sub">days</span></label><input type="number" id="f-dur" min="1" value="${durOf(r)}"></div></div>
     <div class="hint" id="endpreview"></div>
     <div class="fld"><label>Phase / stage <span class="sub">(optional)</span></label><input id="f-phase" value="${esc(r.phase||"")}" placeholder="growth · harvest · CIP"></div>
     <div class="fld"><label>Color</label>${swatchHTML(r.color)}</div>
@@ -450,14 +451,21 @@ function openRunModal(run,presetDate){
     <div class="fld"><label>Notes</label><textarea id="f-notes" rows="2" placeholder="Anything Nadav or Shimrit should know">${esc(r.notes||"")}</textarea></div>
     <div class="modal-actions">${isNew?"":`<button class="tool danger" id="m-del">Delete</button>`}<button class="tool" id="m-cancel">Cancel</button><button class="tool run" id="m-save">${isNew?"Add run":"Save"}</button></div>`;
   scrim.classList.add("open");let color=r.color;
-  const startEl=modal.querySelector("#f-start"),durEl=modal.querySelector("#f-dur"),prev=modal.querySelector("#endpreview");
-  function upd(){const dn=Math.max(1,parseInt(durEl.value||"1"));const end=endFromDuration(startEl.value,dn);const e=parse(end);prev.textContent=`Ends ${DOW[e.getDay()]} ${e.getDate()} ${MON[e.getMonth()].slice(0,3)} · runs d0–d${dn-1}`;}
-  startEl.oninput=upd;durEl.oninput=upd;upd();
+  const startEl=modal.querySelector("#f-start"),endEl=modal.querySelector("#f-end"),durEl=modal.querySelector("#f-dur"),prev=modal.querySelector("#endpreview");
+  function clampDur(){return Math.max(1,parseInt(durEl.value||"1"));}
+  function showPreview(){const dn=clampDur();const e=parse(endEl.value);prev.textContent=`Runs d0–d${dn-1} · ${dn} calendar day${dn>1?"s":""}`;}
+  // Start changed: keep duration, shift end
+  startEl.oninput=()=>{if(!startEl.value)return;const dn=clampDur();endEl.value=endFromDuration(startEl.value,dn);showPreview();};
+  // Duration changed: keep start, recompute end
+  durEl.oninput=()=>{if(!startEl.value)return;const dn=clampDur();endEl.value=endFromDuration(startEl.value,dn);showPreview();};
+  // End changed: keep start, recompute duration
+  endEl.oninput=()=>{if(!startEl.value||!endEl.value)return;let s=parse(startEl.value),e=parse(endEl.value);if(e<s){e=s;endEl.value=startEl.value;}const dn=dayDiff(s,e)+1;durEl.value=dn;showPreview();};
+  showPreview();
   modal.querySelectorAll(".swatch").forEach(sw=>sw.onclick=()=>{modal.querySelectorAll(".swatch").forEach(s=>s.classList.remove("on"));sw.classList.add("on");color=sw.dataset.color;});
   modal.querySelector("#mx").onclick=closeModal;modal.querySelector("#m-cancel").onclick=closeModal;modal.querySelector("#f-title").focus();
   modal.querySelector("#f-open").onclick=()=>{const u=modal.querySelector("#f-link").value.trim();if(u)window.open(u,"_blank");else toast("Paste a file link first");};
   if(!isNew)modal.querySelector("#m-del").onclick=()=>{state.runs=state.runs.filter(x=>x.id!==r.id);state.runs.forEach(x=>x.deps=(x.deps||[]).filter(d=>d!==r.id));state.tasks=state.tasks.filter(t=>t.runId!==r.id);save();render();closeModal();toast("Run deleted");};
-  modal.querySelector("#m-save").onclick=()=>{const start=startEl.value;const dn=Math.max(1,parseInt(durEl.value||"1"));const end=endFromDuration(start,dn);const obj={...r,title:modal.querySelector("#f-title").value.trim()||"Untitled run",station:modal.querySelector("#f-station").value,start,end,color,phase:modal.querySelector("#f-phase").value.trim(),link:modal.querySelector("#f-link").value.trim(),notes:modal.querySelector("#f-notes").value.trim(),deps:Array.from(modal.querySelector("#f-dep").selectedOptions||[]).map(o=>o.value).filter(v=>v.length>5)};if(isNew)state.runs.push(obj);else Object.assign(state.runs.find(x=>x.id===r.id),obj);cascade();save();render();closeModal();toast(isNew?"Run added":"Saved");};
+  modal.querySelector("#m-save").onclick=()=>{const start=startEl.value;let end=endEl.value;if(!end||parse(end)<parse(start))end=endFromDuration(start,clampDur());const obj={...r,title:modal.querySelector("#f-title").value.trim()||"Untitled run",station:modal.querySelector("#f-station").value,start,end,color,phase:modal.querySelector("#f-phase").value.trim(),link:modal.querySelector("#f-link").value.trim(),notes:modal.querySelector("#f-notes").value.trim(),deps:Array.from(modal.querySelector("#f-dep").selectedOptions||[]).map(o=>o.value).filter(v=>v.length>5)};if(isNew)state.runs.push(obj);else Object.assign(state.runs.find(x=>x.id===r.id),obj);cascade();save();render();closeModal();toast(isNew?"Run added":"Saved");};
 }
 function openTaskModal(task,presetDate){
   const isNew=!task;
@@ -511,7 +519,7 @@ document.getElementById("manageStations").onclick=()=>{menu.classList.remove("op
 document.getElementById("clearAll").onclick=()=>{menu.classList.remove("open");if(confirm("Clear all runs and tasks? Export first if you want a backup.")){state.runs=[];state.tasks=[];save();render();toast("Cleared");}};
 document.getElementById("exportBtn").onclick=()=>{menu.classList.remove("open");const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="novella_bioreactor_schedule.json";a.click();toast("Exported");};
 document.getElementById("importBtn").onclick=()=>{menu.classList.remove("open");document.getElementById("fileInput").click();};
-document.getElementById("fileInput").onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{const d=JSON.parse(rd.result);if(!d.runs)throw 0;state={stations:d.stations||DEFAULT_STATIONS,runs:d.runs||[],tasks:d.tasks||[]};save();render();toast("Imported");}catch(err){toast("Couldn't read that file");}};rd.readAsText(f);e.target.value="";};
+document.getElementById("fileInput").onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{const d=JSON.parse(rd.result);if(!d.runs)throw 0;state={stations:(d.stations&&d.stations.length)?d.stations:structuredClone(DEFAULT_STATIONS),runs:d.runs||[],tasks:d.tasks||[]};save();render();toast("Imported");}catch(err){toast("Couldn't read that file");}};rd.readAsText(f);e.target.value="";};
 
 function uid(){return "x"+Math.random().toString(36).slice(2,9);}
 function stationName(id){const s=state.stations.find(x=>x.id===id);return s?s.name:"";}
