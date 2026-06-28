@@ -236,7 +236,7 @@ let view="month",showTasks=true,anchor=startOfDay(new Date());
 let monthSpan=2; // 0 = full month; otherwise number of weeks to show. Default: 2-week view.
 let monthRolling=false; // when true, full-month shows a rolling 5-week window (set by wheel)
 let cloud={on:false,polling:null,lastHash:""};
-CLOUD_URL=localStorage.getItem(URLKEY)||CLOUD_URL;
+CLOUD_URL=(localStorage.getItem(URLKEY)||"").trim()||CLOUD_URL;
 
 function startOfDay(d){const x=new Date(d);x.setHours(0,0,0,0);return x;}
 function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x;}
