@@ -8,7 +8,7 @@
   :root{
     --bg:#f6f7f4;--panel:#ffffff;--panel-2:#f0f2ec;--line:#dde2d6;--line-soft:#e9ece3;
     --ink:#283021;--ink-dim:#5d6a54;--ink-faint:#93a087;
-    --leaf:#5a9d2f;--leaf-dim:#6fae3f;--leaf-deep:#487f25;--berry:#d8483b;--apricot:#e0852b;--sky:#3a8fcc;
+    --leaf:#5a9d2f;--leaf-dim:#6fae3f;--leaf-deep:#487f25;--berry:#d8483b;--apricot:#e0852b;--sky:#3a8fcc;--violet:#8a63c4;
     --shadow:0 1px 3px rgba(40,48,33,.10);--shadow-lg:0 12px 32px rgba(40,48,33,.18);
     --radius:8px;--label-w:120px;
     --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
@@ -154,6 +154,49 @@
   .hint{font-size:11px;color:var(--ink-faint);margin-top:5px;line-height:1.45;}
   .toast{position:fixed;bottom:54px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:9px 16px;border-radius:8px;font-size:13px;z-index:200;opacity:0;transition:.25s;pointer-events:none;box-shadow:var(--shadow-lg);}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  .hide{display:none!important;}
+  .schedule-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .projectsgrid{display:none;flex:1;overflow:auto;padding:18px;align-content:start;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px;}
+  .projectsgrid.show{display:grid;}
+  .pcards-empty{grid-column:1/-1;text-align:center;color:var(--ink-faint);font-size:13px;max-width:320px;margin:80px auto;}
+  .pcards-empty b{color:var(--ink-dim);display:block;margin-bottom:4px;font-size:14px;}
+  .pcard{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;cursor:pointer;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:6px;transition:box-shadow .15s,border-color .15s;}
+  .pcard:hover{box-shadow:var(--shadow-lg);border-color:var(--violet);}
+  .pcard-top{display:flex;justify-content:space-between;align-items:center;}
+  .pdept{font-size:10.5px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:var(--violet);background:rgba(138,99,196,.12);padding:3px 9px;border-radius:20px;}
+  .pname{font-size:15.5px;font-weight:700;color:var(--ink);}
+  .powner,.ptimeline{font-size:12px;color:var(--ink-dim);}
+  .pgoals{font-size:12.5px;color:var(--ink-dim);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-top:2px;}
+  .pmeta{font-size:11px;color:var(--ink-faint);margin-top:auto;padding-top:8px;border-top:1px solid var(--line-soft);}
+  .scrim.scrim-lg{padding:14px;}
+  .modal.modal-lg{max-width:1600px;width:calc(100vw - 28px);max-height:calc(100vh - 28px);overflow:auto;resize:both;}
+  .exptable{width:100%;border-collapse:collapse;margin-top:6px;}
+  .exptable th,.exptable td{border:1px solid var(--line);padding:0;vertical-align:middle;}
+  .exptable th{background:var(--panel-2);padding:7px 8px;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--ink-dim);white-space:nowrap;text-align:left;}
+  .exptable input{width:100%;border:none;background:transparent;padding:7px 8px;font-size:12.5px;color:var(--ink);}
+  .exptable input:focus{outline:none;background:var(--bg);box-shadow:inset 0 0 0 2px rgba(90,157,47,.25);}
+  .exp-delrow,.col-del{border:none;background:none;color:var(--ink-faint);cursor:pointer;font-size:13px;padding:4px 8px;line-height:1;flex:none;}
+  .exp-delrow:hover,.col-del:hover{color:var(--berry);}
+  .exptable td.exp-rowctl{width:28px;text-align:center;border-left:none;}
+  .exptable-wrap{overflow-x:auto;}
+  .exptable-tools{display:flex;gap:8px;margin-top:8px;}
+  .exptable-tools .tool{padding:6px 11px;font-size:12px;}
+  .cols-editor{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+  .col-chip{display:flex;align-items:center;gap:2px;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:2px 2px 2px 8px;}
+  .col-chip input{border:none;background:transparent;font-size:12.5px;width:110px;padding:5px 2px;color:var(--ink);}
+  .col-chip input:focus{outline:none;}
+  .wstream{border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:12px;background:var(--panel-2);}
+  .wstream-head{display:flex;gap:8px;align-items:center;margin-bottom:6px;}
+  .wstream-head .ws-title{flex:1;font-weight:700;font-size:14px;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:7px 10px;color:var(--ink);}
+  .ws-desc{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:7px 10px;font-size:12.5px;color:var(--ink-dim);margin-bottom:8px;resize:vertical;}
+  .gantt-range{display:flex;justify-content:space-between;font-size:11px;color:var(--ink-faint);margin-bottom:6px;}
+  .gantt-group{margin-bottom:10px;}
+  .gantt-group-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--ink-faint);margin-bottom:4px;}
+  .gantt-rows{display:flex;flex-direction:column;gap:5px;}
+  .gantt-row{display:flex;align-items:center;gap:8px;}
+  .gantt-label{width:150px;flex:none;font-size:12px;color:var(--ink-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .gantt-track{position:relative;flex:1;height:18px;background:var(--panel-2);border-radius:4px;}
+  .gantt-bar{position:absolute;top:0;bottom:0;border-radius:4px;box-shadow:var(--shadow);min-width:4px;}
   @media(max-width:720px){
     :root{--label-w:64px;}
     header{gap:7px;padding:8px 10px;}
@@ -175,6 +218,11 @@
 <div class="app">
   <header>
     <div class="brand"><div class="mark"></div><h1>Bioreactor Schedule <span>· Novella</span></h1></div>
+    <div class="seg" id="pageSeg">
+      <button data-page="schedule" class="on">Schedule</button>
+      <button data-page="projects">Projects</button>
+    </div>
+    <div class="schedule-controls" id="scheduleControls">
     <div class="seg" id="viewSeg">
       <button data-view="month" class="on">Month</button>
       <button data-view="week">Work week</button>
@@ -189,10 +237,12 @@
         <button data-span="0">Month</button>
       </div>
     </div>
+    </div>
     <div class="actiongroup">
-    <button class="toggle-tasks on" id="taskToggle"><span class="sw">✓</span><span class="lbl">Tasks</span></button>
-    <button class="tool run" id="newRun">＋ <span class="lbl">Run</span></button>
-    <button class="tool tbtn-task" id="newTask">＋ <span class="lbl">Task</span></button>
+    <button class="toggle-tasks on schedule-only" id="taskToggle"><span class="sw">✓</span><span class="lbl">Tasks</span></button>
+    <button class="tool run schedule-only" id="newRun">＋ <span class="lbl">Run</span></button>
+    <button class="tool tbtn-task schedule-only" id="newTask">＋ <span class="lbl">Task</span></button>
+    <button class="tool" id="newProject" style="background:var(--violet);border-color:var(--violet);color:#fff">＋ <span class="lbl">Project</span></button>
     <div class="menu-wrap">
       <button class="tool" id="menuBtn">⋯</button>
       <div class="menu" id="menu">
@@ -212,6 +262,7 @@
   <div class="scroll" id="scroll">
     <div class="monthgrid show" id="monthgrid"></div>
     <div class="timeline" id="timeline"></div>
+    <div class="projectsgrid" id="projectsgrid"></div>
     <svg class="deps" id="deps" style="display:none"></svg>
     <div class="empty" id="empty" style="display:none">
       <b>Nothing scheduled yet</b>
@@ -231,8 +282,9 @@ let CLOUD_URL="https://script.google.com/macros/s/AKfycbyIiFWFH1xRF75XwCEwKRH2DJ
 const PALETTE=[{name:"Leaf",c:"#5a9d2f"},{name:"Berry",c:"#d8483b"},{name:"Apricot",c:"#e0852b"},{name:"Sky",c:"#3a8fcc"},{name:"Violet",c:"#8a63c4"},{name:"Slate",c:"#6c7a82"}];
 const DEFAULT_STATIONS=[{id:"dasgip",name:"Dasgip"},{id:"mf1",name:"MF1"},{id:"mf2",name:"MF2"},{id:"mf3",name:"MF3"}];
 const KEY="novella_bioreactor_v2",URLKEY="novella_cloud_url";
-let state=load()||{stations:structuredClone(DEFAULT_STATIONS),runs:[],tasks:[]};
-let view="month",showTasks=true,anchor=startOfDay(new Date());
+let state=load()||{stations:structuredClone(DEFAULT_STATIONS),runs:[],tasks:[],projects:[]};
+if(!state.projects)state.projects=[];
+let page="schedule",view="month",showTasks=true,anchor=startOfDay(new Date());
 let monthSpan=2; // 0 = full month; otherwise number of weeks to show. Default: 2-week view.
 let monthRolling=false; // when true, full-month shows a rolling 5-week window (set by wheel)
 let cloud={on:false,polling:null,lastHash:""};
@@ -273,16 +325,16 @@ function periodLabel(){
   return `${MON[anchor.getMonth()]} ${anchor.getFullYear()}`;
 }
 
-function dataHash(){return JSON.stringify({s:state.stations,r:state.runs,t:state.tasks});}
+function dataHash(){return JSON.stringify({s:state.stations,r:state.runs,t:state.tasks,p:state.projects});}
 function load(){try{const s=localStorage.getItem(KEY);return s?JSON.parse(s):null;}catch(e){return null;}}
 let saveTimer;
 function save(push=true){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}flashSaved();if(push&&cloud.on)cloudPush();}
 function flashSaved(){const el=document.getElementById("saveState");if(!el)return;el.textContent=cloud.on?"Synced ✓":"Saved on this device ✓";clearTimeout(saveTimer);saveTimer=setTimeout(()=>{el.textContent=cloud.on?"☁ Live — shared with team":"This device only";},1500);}
 
 async function cloudInit(){if(!CLOUD_URL){updateCloudUI();return;}cloud.on=true;updateCloudUI();await cloudPull(true);cloud.polling=setInterval(()=>cloudPull(false),5000);}
-async function cloudPull(initial){if(!CLOUD_URL)return;try{const res=await fetch(CLOUD_URL+"?action=get&t="+Date.now());if(!res.ok)throw new Error(res.status);const data=await res.json();if(data&&data.runs){const incoming=JSON.stringify({s:data.stations,r:data.runs,t:data.tasks});if(incoming!==cloud.lastHash&&incoming!==dataHash()){state={stations:(data.stations&&data.stations.length)?data.stations:structuredClone(DEFAULT_STATIONS),runs:data.runs||[],tasks:data.tasks||[]};localStorage.setItem(KEY,JSON.stringify(state));render();if(!initial)toast("Updated from team");}cloud.lastHash=incoming;}}catch(e){const ss=document.getElementById("saveState");if(ss)ss.textContent="⚠ Sync paused — retrying";}}
+async function cloudPull(initial){if(!CLOUD_URL)return;try{const res=await fetch(CLOUD_URL+"?action=get&t="+Date.now());if(!res.ok)throw new Error(res.status);const data=await res.json();if(data&&data.runs){const incoming=JSON.stringify({s:data.stations,r:data.runs,t:data.tasks,p:data.projects||[]});if(incoming!==cloud.lastHash&&incoming!==dataHash()){state={stations:(data.stations&&data.stations.length)?data.stations:structuredClone(DEFAULT_STATIONS),runs:data.runs||[],tasks:data.tasks||[],projects:data.projects||[]};localStorage.setItem(KEY,JSON.stringify(state));render();if(!initial)toast("Updated from team");}cloud.lastHash=incoming;}}catch(e){const ss=document.getElementById("saveState");if(ss)ss.textContent="⚠ Sync paused — retrying";}}
 let pushTimer;
-function cloudPush(){clearTimeout(pushTimer);pushTimer=setTimeout(async()=>{try{const body=JSON.stringify({stations:state.stations,runs:state.runs,tasks:state.tasks});cloud.lastHash=JSON.stringify({s:state.stations,r:state.runs,t:state.tasks});await fetch(CLOUD_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body});}catch(e){const ss=document.getElementById("saveState");if(ss)ss.textContent="⚠ Couldn't sync — saved locally";}},400);}
+function cloudPush(){clearTimeout(pushTimer);pushTimer=setTimeout(async()=>{try{const body=JSON.stringify({stations:state.stations,runs:state.runs,tasks:state.tasks,projects:state.projects});cloud.lastHash=JSON.stringify({s:state.stations,r:state.runs,t:state.tasks,p:state.projects});await fetch(CLOUD_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body});}catch(e){const ss=document.getElementById("saveState");if(ss)ss.textContent="⚠ Couldn't sync — saved locally";}},400);}
 function updateCloudUI(){const note=document.getElementById("cloudNote"),btn=document.getElementById("connectCloud");if(cloud.on){note.innerHTML="<b>Cloud sync is ON.</b> Everyone on the shared link sees changes live.";btn.textContent="⛅ Cloud settings…";const ss=document.getElementById("saveState");if(ss)ss.textContent="☁ Live — shared with team";}else{note.innerHTML="<b>Storage:</b> this device only. Connect a Google Sheet to share live.";btn.textContent="⛅ Connect cloud sync…";}}
 
 const mg=document.getElementById("monthgrid");
@@ -415,7 +467,44 @@ function renderWeek(){
 function getLabelW(){return parseInt(getComputedStyle(document.documentElement).getPropertyValue("--label-w"))||120;}
 function drawDeps(){depsSvg.innerHTML="";depsSvg.setAttribute("width",tl.scrollWidth);depsSvg.setAttribute("height",tl.scrollHeight);depsSvg.style.width=tl.scrollWidth+"px";depsSvg.style.height=tl.scrollHeight+"px";const rect=tl.getBoundingClientRect();const bars={};tl.querySelectorAll(".bar").forEach(b=>bars[b.dataset.id]=b);state.runs.forEach(r=>(r.deps||[]).forEach(depId=>{const from=bars[depId],to=bars[r.id];if(!from||!to)return;const fr=from.getBoundingClientRect(),tr=to.getBoundingClientRect();const x1=fr.right-rect.left,y1=fr.top-rect.top+fr.height/2,x2=tr.left-rect.left,y2=tr.top-rect.top+tr.height/2;const mx=Math.max(x1+18,(x1+x2)/2);const p=document.createElementNS("http://www.w3.org/2000/svg","path");p.setAttribute("d",`M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2-7},${y2}`);depsSvg.appendChild(p);const ah=document.createElementNS("http://www.w3.org/2000/svg","path");ah.setAttribute("class","arrowhead");ah.setAttribute("d",`M${x2-7},${y2-4} L${x2},${y2} L${x2-7},${y2+4} Z`);depsSvg.appendChild(ah);}));}
 
-function render(){document.getElementById("period").textContent=periodLabel();const isMonth=view==="month";mg.classList.toggle("show",isMonth);tl.classList.toggle("show",!isMonth);depsSvg.style.display=isMonth?"none":"block";if(isMonth)renderMonth();else renderWeek();document.getElementById("empty").style.display=state.runs.length?"none":"block";renderLegend();}
+const pg=document.getElementById("projectsgrid");
+function render(){
+  if(page==="projects"){
+    mg.classList.remove("show");tl.classList.remove("show");depsSvg.style.display="none";
+    document.getElementById("empty").style.display="none";
+    pg.classList.add("show");
+    renderProjects();
+    return;
+  }
+  pg.classList.remove("show");
+  document.getElementById("period").textContent=periodLabel();const isMonth=view==="month";mg.classList.toggle("show",isMonth);tl.classList.toggle("show",!isMonth);depsSvg.style.display=isMonth?"none":"block";if(isMonth)renderMonth();else renderWeek();document.getElementById("empty").style.display=state.runs.length?"none":"block";renderLegend();
+}
+function fmtShort(s){const d=parse(s);return `${d.getDate()} ${MON[d.getMonth()].slice(0,3)}`;}
+function renderProjects(){
+  pg.innerHTML="";
+  if(!state.projects.length){pg.innerHTML=`<div class="pcards-empty"><b>No projects yet</b>Use the ＋ New project button to add goals, plan, and timeline for a project.</div>`;return;}
+  state.projects.forEach(p=>{
+    const card=document.createElement("div");card.className="pcard";
+    const nExp=p.workstreams?allExpRows(p).length:(p.experiments||[]).length,nMs=(p.milestones||[]).length;
+    const span=projectSpan(p);
+    card.innerHTML=`<div class="pcard-top"><span class="pdept">${esc(p.dept||"Department TBD")}</span></div>
+      <div class="pname">${esc(p.name)||"Untitled project"}</div>
+      <div class="powner">${p.owner?esc(p.owner):"No owner set"}</div>
+      <div class="ptimeline">${span?`${fmtShort(iso(span.min))} – ${fmtShort(iso(span.max))}`:"No timeline set"}</div>
+      ${p.goals?`<div class="pgoals">${esc(p.goals)}</div>`:""}
+      <div class="pmeta">${nExp} experiment${nExp===1?"":"s"} · ${nMs} milestone${nMs===1?"":"s"}</div>`;
+    card.addEventListener("click",()=>openProjectModal(p));
+    pg.appendChild(card);
+  });
+}
+function syncPageButtons(){
+  document.querySelectorAll("#pageSeg button").forEach(b=>b.classList.toggle("on",b.dataset.page===page));
+  const sched=page==="schedule";
+  document.getElementById("scheduleControls").classList.toggle("hide",!sched);
+  document.querySelectorAll(".schedule-only").forEach(el=>el.classList.toggle("hide",!sched));
+  document.getElementById("newProject").classList.toggle("hide",sched);
+  document.getElementById("legend").classList.toggle("hide",!sched);
+}
 function renderLegend(){const lg=document.getElementById("legend");lg.innerHTML="";PALETTE.forEach(p=>{const it=document.createElement("div");it.className="item";it.innerHTML=`<span class="lk" style="background:${p.c}"></span>${p.name}`;lg.appendChild(it);});}
 
 function cascade(){const byId={};state.runs.forEach(r=>byId[r.id]=r);let changed=true,guard=0;while(changed&&guard++<300){changed=false;state.runs.forEach(r=>{(r.deps||[]).forEach(depId=>{const pred=byId[depId];if(!pred)return;const minStart=addDays(parse(pred.end),1);if(parse(r.start)<minStart){const d=durOf(r);r.start=iso(minStart);r.end=endFromDuration(r.start,d);changed=true;}});});}}
@@ -429,7 +518,7 @@ scrollEl.addEventListener("pointermove",e=>{if(!drag)return;const dx=e.clientX-d
 scrollEl.addEventListener("pointerup",e=>{if(!drag)return;const dx=e.clientX-drag.startX;const steps=Math.round(dx/colW);const d=drag;d.el.classList.remove("dragging");d.el.style.transform="";if(d.moved&&steps!==0){if(d.type==="move"){d.run.start=iso(addDays(parse(d.os),steps));d.run.end=iso(addDays(parse(d.oe),steps));cascade();}else if(d.type==="resizeL"){const ns=addDays(parse(d.os),steps);if(ns<=parse(d.run.end)){d.run.start=iso(ns);cascade();}}else if(d.type==="resizeR"){const ne=addDays(parse(d.oe),steps);if(ne>=parse(d.run.start)){d.run.end=iso(ne);cascade();}}else if(d.type==="task")d.task.date=iso(addDays(parse(d.od),steps));save();render();}else if(!d.moved){if(d.type==="task")openTaskModal(d.task);else openRunModal(d.run);}drag=null;});
 
 const scrim=document.getElementById("scrim"),modal=document.getElementById("modal");
-function closeModal(){scrim.classList.remove("open");modal.innerHTML="";}
+function closeModal(){scrim.classList.remove("open");scrim.classList.remove("scrim-lg");modal.innerHTML="";modal.className="modal";}
 scrim.addEventListener("pointerdown",e=>{if(e.target===scrim)closeModal();});
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal();});
 function swatchHTML(sel){return `<div class="swatches">`+PALETTE.map(p=>`<div class="swatch${p.c===sel?" on":""}" data-color="${p.c}" style="background:${p.c}" title="${p.name}"></div>`).join("")+`</div>`;}
@@ -482,6 +571,103 @@ function openTaskModal(task,presetDate){
   if(!isNew)modal.querySelector("#t-del").onclick=()=>{state.tasks=state.tasks.filter(x=>x.id!==t.id);save();render();closeModal();toast("Task deleted");};
   modal.querySelector("#t-save").onclick=()=>{const obj={...t,title:modal.querySelector("#t-title").value.trim()||"Untitled task",station:modal.querySelector("#t-station").value,date:modal.querySelector("#t-date").value,color,done:isNew?false:modal.querySelector("#t-done").checked};if(isNew)state.tasks.push(obj);else Object.assign(state.tasks.find(x=>x.id===t.id),obj);save();render();closeModal();toast(isNew?"Task added":"Saved");};
 }
+function allExpRows(p){return (p.workstreams||[]).flatMap(w=>w.rows||[]);}
+function projectSpan(p){
+  const items=allExpRows(p).filter(r=>r.start&&r.end&&parse(r.end)>=parse(r.start));
+  if(!items.length)return null;
+  let minD=parse(items[0].start),maxD=parse(items[0].end);
+  items.forEach(it=>{const s=parse(it.start),e=parse(it.end);if(s<minD)minD=s;if(e>maxD)maxD=e;});
+  return {min:minD,max:maxD};
+}
+function renderGantt(wrap,workstreams){
+  const groups=workstreams.map(w=>({title:w.title||"Untitled workstream",items:(w.rows||[]).map((r,ri)=>({label:(r.cells&&r.cells[0])?r.cells[0]:`Row ${ri+1}`,start:r.start,end:r.end})).filter(it=>it.start&&it.end&&parse(it.end)>=parse(it.start))})).filter(g=>g.items.length);
+  if(!groups.length){wrap.innerHTML=`<div class="hint">Add Start/End dates to experiment rows below to plot a timeline here.</div>`;return;}
+  const allItems=groups.flatMap(g=>g.items);
+  let minD=parse(allItems[0].start),maxD=parse(allItems[0].end);
+  allItems.forEach(it=>{const s=parse(it.start),e=parse(it.end);if(s<minD)minD=s;if(e>maxD)maxD=e;});
+  const totalDays=Math.max(1,dayDiff(minD,maxD)+1);
+  let colorIdx=0;
+  wrap.innerHTML=`<div class="gantt-range"><span>${fmtShort(iso(minD))}</span><span>${fmtShort(iso(maxD))}</span></div>`+groups.map(g=>`<div class="gantt-group"><div class="gantt-group-title">${esc(g.title)}</div><div class="gantt-rows">${g.items.map(it=>{
+    const left=dayDiff(minD,parse(it.start))/totalDays*100;
+    const width=Math.max(2,(dayDiff(parse(it.start),parse(it.end))+1)/totalDays*100);
+    const color=PALETTE[colorIdx++%PALETTE.length].c;
+    return `<div class="gantt-row"><div class="gantt-label">${esc(it.label)}</div><div class="gantt-track"><div class="gantt-bar" style="left:${left}%;width:${width}%;background:${color}" title="${esc(it.label)}: ${it.start} – ${it.end}"></div></div></div>`;
+  }).join("")}</div></div>`).join("");
+}
+function openProjectModal(project){
+  const isNew=!project;
+  const p=project||{id:uid(),name:"",owner:"",dept:"",goals:"",plan:"",milestones:[]};
+  let expCols,workstreams;
+  if(p.workstreams&&p.workstreams.length){
+    expCols=p.expCols&&p.expCols.length?[...p.expCols]:["Experiment","Status","Notes"];
+    workstreams=p.workstreams.map(w=>({id:w.id||uid(),title:w.title||"",description:w.description||"",rows:(w.rows||[]).map(r=>({cells:[...(r.cells||[])],start:r.start||"",end:r.end||""}))}));
+  }else if(p.expTable&&p.expTable.cols&&p.expTable.cols.length){
+    expCols=[...p.expTable.cols];
+    workstreams=[{id:uid(),title:"General",description:"",rows:(p.expTable.rows||[]).map(r=>Array.isArray(r)?{cells:[...r],start:"",end:""}:{cells:[...(r.cells||[])],start:r.start||"",end:r.end||""})}];
+  }else if(p.experiments&&p.experiments.length){
+    expCols=["Experiment"];
+    workstreams=[{id:uid(),title:"General",description:"",rows:p.experiments.map(e=>({cells:[e],start:"",end:""}))}];
+  }else{
+    expCols=["Experiment","Status","Notes"];
+    workstreams=[];
+  }
+  modal.className="modal modal-lg";
+  scrim.classList.add("scrim-lg");
+  modal.innerHTML=`<h2>${isNew?"New project":"Edit project"}<button class="x" id="mx">×</button></h2>
+    <div class="fld"><label>Project name</label><input id="p-name" value="${esc(p.name)}" placeholder="e.g. Media optimization"></div>
+    <div class="fld row"><div><label>Owner</label><input id="p-owner" value="${esc(p.owner)}"></div><div><label>Department</label><select id="p-dept"><option value=""${p.dept?"":" selected"}>Not set</option><option value="Process Development"${p.dept==="Process Development"?" selected":""}>Process Development</option><option value="Biology"${p.dept==="Biology"?" selected":""}>Biology</option></select></div></div>
+    <div class="fld row"><div><label>Goals</label><textarea id="p-goals" rows="3" placeholder="What this project is trying to achieve">${esc(p.goals||"")}</textarea></div><div><label>Experimental plan</label><textarea id="p-plan" rows="3" placeholder="Approach / method">${esc(p.plan||"")}</textarea></div></div>
+    <div class="fld"><label>Timeline</label><div id="gantt-wrap"></div></div>
+    <div class="fld"><label>Experiment columns <span class="sub">(shared across every workstream below)</span></label><div id="cols-wrap"></div></div>
+    <div class="fld"><label>Workstreams</label><div id="ws-wrap"></div><div class="exptable-tools"><button type="button" class="tool" id="ws-add">+ Workstream</button></div></div>
+    <div class="fld"><label>Milestones <span class="sub">(one per line)</span></label><textarea id="p-milestones" rows="3" placeholder="Kickoff">${esc((p.milestones||[]).join("\n"))}</textarea></div>
+    <div class="modal-actions">${isNew?"":`<button class="tool danger" id="p-del">Delete</button>`}<button class="tool" id="p-cancel">Cancel</button><button class="tool" id="p-save" style="background:var(--violet);border-color:var(--violet);color:#fff">${isNew?"Add project":"Save"}</button></div>`;
+  scrim.classList.add("open");
+  const colsWrap=modal.querySelector("#cols-wrap"),wsWrap=modal.querySelector("#ws-wrap"),ganttWrap=modal.querySelector("#gantt-wrap");
+  function paintCols(){
+    colsWrap.innerHTML=`<div class="cols-editor">${expCols.map((c,ci)=>`<div class="col-chip"><input class="col-name" data-ci="${ci}" value="${esc(c)}"><button type="button" class="col-del" data-ci="${ci}" title="Remove column">×</button></div>`).join("")}<button type="button" class="tool" id="col-add" style="padding:6px 11px;font-size:12px">+ Column</button></div>`;
+    colsWrap.querySelectorAll(".col-name").forEach(inp=>inp.oninput=()=>{expCols[+inp.dataset.ci]=inp.value;paintWorkstreams();});
+    colsWrap.querySelectorAll(".col-del").forEach(b=>b.onclick=()=>{if(expCols.length<=1){toast("Keep at least one column");return;}const ci=+b.dataset.ci;expCols.splice(ci,1);workstreams.forEach(w=>w.rows.forEach(r=>r.cells.splice(ci,1)));paintCols();paintWorkstreams();});
+    colsWrap.querySelector("#col-add").onclick=()=>{expCols.push("Column "+(expCols.length+1));workstreams.forEach(w=>w.rows.forEach(r=>r.cells.push("")));paintCols();paintWorkstreams();};
+  }
+  function paintWorkstreams(){
+    wsWrap.innerHTML=workstreams.length?workstreams.map((w,wi)=>`<div class="wstream" data-wi="${wi}">
+      <div class="wstream-head"><input class="ws-title" data-wi="${wi}" value="${esc(w.title)}" placeholder="Workstream title"><button type="button" class="tool danger ws-del" data-wi="${wi}" style="padding:6px 10px;font-size:11.5px">Delete workstream</button></div>
+      <textarea class="ws-desc" data-wi="${wi}" rows="1" placeholder="Description (optional)">${esc(w.description||"")}</textarea>
+      <div class="exptable-wrap"><table class="exptable"><thead><tr>${expCols.map(c=>`<th>${esc(c)}</th>`).join("")}<th>Start</th><th>End</th><th style="width:28px"></th></tr></thead><tbody>${w.rows.map((row,ri)=>`<tr>${expCols.map((c,ci)=>`<td><input class="exp-cell" data-wi="${wi}" data-ri="${ri}" data-ci="${ci}" value="${esc(row.cells[ci]||"")}"></td>`).join("")}<td><input type="date" class="exp-start" data-wi="${wi}" data-ri="${ri}" value="${row.start||""}"></td><td><input type="date" class="exp-end" data-wi="${wi}" data-ri="${ri}" value="${row.end||""}"></td><td class="exp-rowctl"><button type="button" class="exp-delrow" data-wi="${wi}" data-ri="${ri}" title="Remove row">×</button></td></tr>`).join("")}</tbody></table>${w.rows.length?"":'<div class="hint">No experiments yet — use + Row to add one.</div>'}</div>
+      <div class="exptable-tools"><button type="button" class="tool ws-addrow" data-wi="${wi}">+ Row</button></div>
+    </div>`).join(""):'<div class="hint">No workstreams yet — use + Workstream to add one.</div>';
+    wsWrap.querySelectorAll(".ws-title").forEach(inp=>inp.oninput=()=>{workstreams[+inp.dataset.wi].title=inp.value;});
+    wsWrap.querySelectorAll(".ws-desc").forEach(ta=>ta.oninput=()=>{workstreams[+ta.dataset.wi].description=ta.value;});
+    wsWrap.querySelectorAll(".ws-del").forEach(b=>b.onclick=()=>{if(!confirm("Delete this workstream and its experiments?"))return;workstreams.splice(+b.dataset.wi,1);paintWorkstreams();renderGantt(ganttWrap,workstreams);});
+    wsWrap.querySelectorAll(".ws-addrow").forEach(b=>b.onclick=()=>{workstreams[+b.dataset.wi].rows.push({cells:expCols.map(()=>""),start:"",end:""});paintWorkstreams();renderGantt(ganttWrap,workstreams);});
+    wsWrap.querySelectorAll(".exp-cell").forEach(inp=>inp.oninput=()=>{workstreams[+inp.dataset.wi].rows[+inp.dataset.ri].cells[+inp.dataset.ci]=inp.value;});
+    wsWrap.querySelectorAll(".exp-start").forEach(inp=>inp.oninput=()=>{workstreams[+inp.dataset.wi].rows[+inp.dataset.ri].start=inp.value;renderGantt(ganttWrap,workstreams);});
+    wsWrap.querySelectorAll(".exp-end").forEach(inp=>inp.oninput=()=>{workstreams[+inp.dataset.wi].rows[+inp.dataset.ri].end=inp.value;renderGantt(ganttWrap,workstreams);});
+    wsWrap.querySelectorAll(".exp-delrow").forEach(b=>b.onclick=()=>{workstreams[+b.dataset.wi].rows.splice(+b.dataset.ri,1);paintWorkstreams();renderGantt(ganttWrap,workstreams);});
+  }
+  paintCols();
+  paintWorkstreams();
+  renderGantt(ganttWrap,workstreams);
+  modal.querySelector("#ws-add").onclick=()=>{workstreams.push({id:uid(),title:"",description:"",rows:[]});paintWorkstreams();};
+  modal.querySelector("#mx").onclick=closeModal;modal.querySelector("#p-cancel").onclick=closeModal;modal.querySelector("#p-name").focus();
+  if(!isNew)modal.querySelector("#p-del").onclick=()=>{if(!confirm("Delete this project?"))return;state.projects=state.projects.filter(x=>x.id!==p.id);save();render();closeModal();toast("Project deleted");};
+  modal.querySelector("#p-save").onclick=()=>{
+    const obj={...p,
+      name:modal.querySelector("#p-name").value.trim()||"Untitled project",
+      owner:modal.querySelector("#p-owner").value.trim(),
+      dept:modal.querySelector("#p-dept").value,
+      goals:modal.querySelector("#p-goals").value.trim(),
+      plan:modal.querySelector("#p-plan").value.trim(),
+      expCols:[...expCols],
+      workstreams:workstreams.map(w=>({id:w.id,title:w.title.trim(),description:w.description.trim(),rows:w.rows.map(r=>({cells:[...r.cells],start:r.start,end:r.end}))})),
+      milestones:modal.querySelector("#p-milestones").value.split("\n").map(s=>s.trim()).filter(Boolean)
+    };
+    delete obj.experiments;delete obj.start;delete obj.end;delete obj.expTable;
+    if(isNew){state.projects.push(obj);}else{const target=state.projects.find(x=>x.id===p.id);Object.assign(target,obj);delete target.experiments;delete target.start;delete target.end;delete target.expTable;}
+    save();render();closeModal();toast(isNew?"Project added":"Saved");
+  };
+}
 function openStationModal(){
   modal.innerHTML=`<h2>Stations<button class="x" id="mx">×</button></h2><div id="st-list"></div><div class="fld" style="display:flex;gap:8px;margin-top:6px"><input id="st-new" placeholder="Add station (e.g. MF4)"><button class="tool run" id="st-add">Add</button></div><div class="hint">Each station is a row. Removing one hides its runs but doesn't delete them.</div><div class="modal-actions"><button class="tool run" id="st-done" style="flex:1">Done</button></div>`;
   scrim.classList.add("open");const list=modal.querySelector("#st-list");
@@ -500,6 +686,8 @@ function openCloudModal(){
 
 function syncViewButtons(){document.querySelectorAll("#viewSeg button").forEach(b=>b.classList.toggle("on",b.dataset.view===view));document.getElementById("spanSeg").classList.toggle("hide",view!=="month");}
 document.getElementById("viewSeg").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;view=b.dataset.view;syncViewButtons();render();});
+document.getElementById("pageSeg").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;page=b.dataset.page;syncPageButtons();render();});
+document.getElementById("newProject").onclick=()=>openProjectModal(null);
 document.getElementById("spanSeg").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;monthSpan=parseInt(b.dataset.span);monthRolling=false;document.querySelectorAll("#spanSeg button").forEach(x=>x.classList.toggle("on",x===b));render();});
 function stepBack(){if(view==="week")anchor=addDays(anchor,-7);else if(monthSpan>0)anchor=addDays(anchor,-7*monthSpan);else anchor=new Date(anchor.getFullYear(),anchor.getMonth()-1,1);render();}
 function stepFwd(){if(view==="week")anchor=addDays(anchor,7);else if(monthSpan>0)anchor=addDays(anchor,7*monthSpan);else anchor=new Date(anchor.getFullYear(),anchor.getMonth()+1,1);render();}
@@ -519,7 +707,7 @@ document.getElementById("manageStations").onclick=()=>{menu.classList.remove("op
 document.getElementById("clearAll").onclick=()=>{menu.classList.remove("open");if(confirm("Clear all runs and tasks? Export first if you want a backup.")){state.runs=[];state.tasks=[];save();render();toast("Cleared");}};
 document.getElementById("exportBtn").onclick=()=>{menu.classList.remove("open");const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="novella_bioreactor_schedule.json";a.click();toast("Exported");};
 document.getElementById("importBtn").onclick=()=>{menu.classList.remove("open");document.getElementById("fileInput").click();};
-document.getElementById("fileInput").onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{const d=JSON.parse(rd.result);if(!d.runs)throw 0;state={stations:(d.stations&&d.stations.length)?d.stations:structuredClone(DEFAULT_STATIONS),runs:d.runs||[],tasks:d.tasks||[]};save();render();toast("Imported");}catch(err){toast("Couldn't read that file");}};rd.readAsText(f);e.target.value="";};
+document.getElementById("fileInput").onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{const d=JSON.parse(rd.result);if(!d.runs)throw 0;state={stations:(d.stations&&d.stations.length)?d.stations:structuredClone(DEFAULT_STATIONS),runs:d.runs||[],tasks:d.tasks||[],projects:d.projects||[]};save();render();toast("Imported");}catch(err){toast("Couldn't read that file");}};rd.readAsText(f);e.target.value="";};
 
 function uid(){return "x"+Math.random().toString(36).slice(2,9);}
 function stationName(id){const s=state.stations.find(x=>x.id===id);return s?s.name:"";}
@@ -554,6 +742,7 @@ scrollEl.addEventListener("wheel",e=>{
 },{passive:false});
 
 if(state.runs.length===0&&!localStorage.getItem(KEY)){const t=startOfDay(new Date());state.runs.push({id:uid(),station:"dasgip",title:"Example: strawberry batch",start:iso(t),end:endFromDuration(iso(t),8),color:PALETTE[0].c,phase:"growth",notes:"",deps:[]});state.tasks.push({id:uid(),station:"dasgip",title:"Inoculate",date:iso(t),color:PALETTE[3].c,done:false,runId:null});}
+syncPageButtons();
 render();
 cloudInit();
 </script>
