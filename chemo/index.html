@@ -65,6 +65,43 @@
   .schedule-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
   .projectsgrid{display:none;flex:1;overflow:auto;padding:18px;align-content:start;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px;}
   .projectsgrid.show{display:grid;}
+  .workplan{display:none;flex-direction:column;min-height:100%;}
+  .workplan.show{display:flex;}
+  .wp-toolbar{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--panel);}
+  .wp-summary{font-size:13px;color:var(--ink-dim);}
+  .wp-summary b{color:var(--ink);}
+  .wp-lag{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--ink-dim);}
+  .wp-lag input{width:56px;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:5px 7px;color:var(--ink);}
+  .wp-zoom button{padding:5px 10px;font-size:11.5px;}
+  .wp-legendrow{display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:11.5px;color:var(--ink-dim);margin-left:auto;}
+  .wp-legendrow .lk{width:10px;height:10px;border-radius:3px;display:inline-block;margin-right:5px;vertical-align:-1px;}
+  .wp-warn .line{padding:5px 14px;background:rgba(216,72,59,.06);border-bottom:1px solid var(--line-soft);font-size:12px;color:var(--berry);font-weight:600;}
+  .wp-main{display:flex;align-items:flex-start;overflow-x:auto;flex:1;}
+  .wp-left{flex:none;position:sticky;left:0;z-index:8;background:var(--panel);border-right:1px solid var(--line);box-shadow:2px 0 4px rgba(40,48,33,.05);}
+  .wp-tr{display:flex;height:36px;border-bottom:1px solid var(--line-soft);}
+  .wp-tr.head{height:30px;background:var(--panel-2);border-bottom:1px solid var(--line);}
+  .wp-tr.head .wp-td{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--ink-dim);padding:0 8px;}
+  .wp-tr.conflict{background:rgba(216,72,59,.06);}
+  .wp-td{flex:none;border-right:1px solid var(--line-soft);display:flex;align-items:center;min-width:0;}
+  .wp-td.num{justify-content:center;font-size:11px;color:var(--ink-faint);}
+  .wp-td input,.wp-td select{width:100%;height:100%;border:none;background:transparent;padding:0 8px;font-size:12.5px;color:var(--ink);}
+  .wp-td input:focus,.wp-td select:focus{outline:none;background:var(--bg);box-shadow:inset 0 0 0 2px rgba(90,157,47,.25);}
+  .wp-td input[type=number]{padding:0 4px 0 8px;}
+  .wp-td.ctl{justify-content:center;}
+  .wp-ro{padding:0 8px;font-size:12.5px;color:var(--ink-dim);white-space:nowrap;display:flex;align-items:center;gap:5px;width:100%;}
+  .wp-unpin{border:none;background:none;color:var(--sky);cursor:pointer;font-size:13px;padding:0 2px;}
+  .wp-del{border:none;background:none;color:var(--ink-faint);cursor:pointer;font-size:14px;padding:0 6px;}
+  .wp-del:hover{color:var(--berry);}
+  .wp-gantt{flex:none;}
+  .wp-ghead{position:relative;height:30px;border-bottom:1px solid var(--line);background:var(--panel-2);}
+  .wp-month{position:absolute;top:0;bottom:0;border-left:1px solid var(--line);display:flex;align-items:center;padding-left:6px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--ink-dim);overflow:hidden;white-space:nowrap;}
+  .wp-grows{position:relative;}
+  .wp-gline{position:absolute;top:0;bottom:0;width:1px;background:var(--line-soft);}
+  .wp-today{position:absolute;top:0;bottom:0;width:2px;background:rgba(90,157,47,.55);z-index:2;}
+  .wp-grow{position:relative;height:36px;border-bottom:1px solid var(--line-soft);}
+  .wp-bar{position:absolute;top:7px;height:22px;border-radius:5px;color:#fff;font-size:11.5px;font-weight:600;line-height:20px;padding:0 7px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:grab;box-shadow:var(--shadow);border:1px solid rgba(0,0,0,.08);user-select:none;z-index:3;}
+  .wp-bar.dragging{opacity:.85;cursor:grabbing;z-index:10;box-shadow:var(--shadow-lg);}
+  .wp-bar.conflict{box-shadow:0 0 0 2px var(--berry);}
   .pcards-empty{grid-column:1/-1;text-align:center;color:var(--ink-faint);font-size:13px;max-width:320px;margin:80px auto;}
   .pcards-empty b{color:var(--ink-dim);display:block;margin-bottom:4px;font-size:14px;}
   .pcard{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;cursor:pointer;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:6px;transition:box-shadow .15s,border-color .15s;}
@@ -137,6 +174,8 @@
   .daycell .dnum{font-size:14px;font-weight:700;color:var(--ink);}
   .daycell.today{background:rgba(90,157,47,.10);}
   .daycell.today .dnum{color:var(--leaf-deep);}
+  .daycell{cursor:pointer;}
+  .daycell.sel{background:rgba(58,143,204,.14);box-shadow:inset 0 -2px 0 var(--sky);}
   .station{display:flex;border-bottom:1px solid var(--line-soft);}
   .station-label{position:sticky;left:0;z-index:6;width:var(--label-w);min-width:var(--label-w);background:var(--panel);border-right:1px solid var(--line);display:flex;align-items:center;gap:8px;padding:0 12px;font-weight:600;font-size:13px;}
   .station-dot{width:8px;height:8px;border-radius:2px;flex:none;background:var(--leaf);}
@@ -176,6 +215,7 @@
   .cell.out{background:var(--panel-2);opacity:.6;}
   .cell.today{border-color:var(--leaf);box-shadow:0 0 0 1px var(--leaf) inset;}
   .cell.wknd{background:rgba(40,48,33,.018);}
+  .cell.sel{border-color:var(--sky);box-shadow:0 0 0 2px var(--sky) inset;}
   .cell .cnum{font-size:14px;font-weight:700;color:var(--ink-dim);align-self:center;line-height:22px;}
   .cell.today .cnum{background:var(--leaf);color:#fff;border-radius:50%;width:23px;height:23px;display:flex;align-items:center;justify-content:center;font-size:13px;align-self:center;}
   .cell .cbody{flex:1;}
@@ -256,6 +296,7 @@
     <div class="seg" id="pageSeg">
       <button data-page="schedule" class="on">Schedule</button>
       <button data-page="projects">Projects</button>
+      <button data-page="workplan">Work plan</button>
     </div>
     <div class="schedule-controls" id="scheduleControls">
     <div class="seg" id="viewSeg">
@@ -298,6 +339,7 @@
     <div class="monthgrid show" id="monthgrid"></div>
     <div class="timeline" id="timeline"></div>
     <div class="projectsgrid" id="projectsgrid"></div>
+    <div class="workplan" id="wpview"></div>
     <svg class="deps" id="deps" style="display:none"></svg>
     <div class="empty" id="empty" style="display:none">
       <b>Nothing scheduled yet</b>
@@ -318,9 +360,11 @@ const PROJECTS_CLOUD_URL="https://script.google.com/macros/s/AKfycbyIiFWFH1xRF75
 const PALETTE=[{name:"Leaf",c:"#5a9d2f"},{name:"Berry",c:"#d8483b"},{name:"Apricot",c:"#e0852b"},{name:"Sky",c:"#3a8fcc"},{name:"Violet",c:"#8a63c4"},{name:"Slate",c:"#6c7a82"}];
 const DEFAULT_STATIONS=[{id:"line1",name:"Line 1"}];
 const KEY="novella_bioreactor_chemo_v1",URLKEY="novella_cloud_url_chemo";
-let state=load()||{stations:structuredClone(DEFAULT_STATIONS),runs:[],tasks:[],projects:[]};
+let state=load()||{stations:structuredClone(DEFAULT_STATIONS),runs:[],tasks:[],projects:[],workplan:{lagDays:7,items:[]}};
 if(!state.projects)state.projects=[];
+if(!state.workplan||!Array.isArray(state.workplan.items))state.workplan={lagDays:7,items:[]};
 let page="schedule",view="month",showTasks=true,anchor=startOfDay(new Date());
+let selDate=null; // ISO date the user clicked in the calendar; new runs/tasks start here (null = today)
 let monthSpan=2; // 0 = full month; otherwise number of weeks to show. Default: 2-week view.
 let monthRolling=false; // when true, full-month shows a rolling 5-week window (set by wheel)
 let cloud={on:false,polling:null,lastHash:""};
@@ -368,25 +412,35 @@ function save(push=true){try{localStorage.setItem(KEY,JSON.stringify(state));}ca
 function flashSaved(){const el=document.getElementById("saveState");if(!el)return;el.textContent=cloud.on?"Synced ✓":"Saved on this device ✓";clearTimeout(saveTimer);saveTimer=setTimeout(()=>{el.textContent=cloud.on?"☁ Live — shared with team":"This device only";},1500);}
 
 async function cloudInit(){if(!CLOUD_URL){updateCloudUI();return;}cloud.on=true;updateCloudUI();await cloudPull(true);cloud.polling=setInterval(()=>cloudPull(false),5000);}
-async function cloudPull(initial){if(!CLOUD_URL)return;try{const res=await fetch(CLOUD_URL+"?action=get&t="+Date.now());if(!res.ok)throw new Error(res.status);const data=await res.json();if(data&&data.runs){const incoming=JSON.stringify({s:data.stations,r:data.runs,t:data.tasks});if(incoming!==cloud.lastHash&&incoming!==dataHash()){state={stations:(data.stations&&data.stations.length)?data.stations:structuredClone(DEFAULT_STATIONS),runs:data.runs||[],tasks:data.tasks||[]};localStorage.setItem(KEY,JSON.stringify(state));render();if(!initial)toast("Updated from team");}cloud.lastHash=incoming;}}catch(e){const ss=document.getElementById("saveState");if(ss)ss.textContent="⚠ Sync paused — retrying";}}
+async function cloudPull(initial){if(!CLOUD_URL)return;try{const res=await fetch(CLOUD_URL+"?action=get&t="+Date.now());if(!res.ok)throw new Error(res.status);const data=await res.json();if(data&&data.runs){const incoming=JSON.stringify({s:data.stations,r:data.runs,t:data.tasks});if(incoming!==cloud.lastHash&&incoming!==dataHash()){state={stations:(data.stations&&data.stations.length)?data.stations:structuredClone(DEFAULT_STATIONS),runs:data.runs||[],tasks:data.tasks||[],projects:state.projects||[],workplan:state.workplan};localStorage.setItem(KEY,JSON.stringify(state));render();if(!initial)toast("Updated from team");}cloud.lastHash=incoming;}}catch(e){const ss=document.getElementById("saveState");if(ss)ss.textContent="⚠ Sync paused — retrying";}}
 let pushTimer;
 function cloudPush(){clearTimeout(pushTimer);pushTimer=setTimeout(async()=>{try{const body=JSON.stringify({stations:state.stations,runs:state.runs,tasks:state.tasks});cloud.lastHash=JSON.stringify({s:state.stations,r:state.runs,t:state.tasks});await fetch(CLOUD_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body});}catch(e){const ss=document.getElementById("saveState");if(ss)ss.textContent="⚠ Couldn't sync — saved locally";}},400);}
 function updateCloudUI(){const note=document.getElementById("cloudNote"),btn=document.getElementById("connectCloud");if(cloud.on){note.innerHTML="<b>Cloud sync is ON.</b> Everyone on the shared link sees changes live.";btn.textContent="⛅ Cloud settings…";const ss=document.getElementById("saveState");if(ss)ss.textContent="☁ Live — shared with team";}else{note.innerHTML="<b>Storage:</b> this device only. Connect a Google Sheet to share live.";btn.textContent="⛅ Connect cloud sync…";}}
 
-// Projects always sync against Modi'in's Sheet, independent of this site's own schedule cloud sync.
+// Projects AND the work plan are department-wide: one shared copy living in Modi'in's Sheet,
+// reached through this channel and never through this site's own CLOUD_URL. Keeping them off
+// the schedule channel is what stops an edit made here from clobbering Modi'in's runs/tasks.
 let projectsLastHash="";
+function sharedHash(p,w){return JSON.stringify({p:p||[],w:w||{lagDays:7,items:[]}});}
+// Never swap shared state out from under someone mid-edit: re-rendering rebuilds the work-plan
+// inputs (losing focus and caret) and row indexes could shift under an in-flight change. Returning
+// early leaves lastHash untouched, so the very next poll applies whatever the team changed.
+function editingShared(){const a=document.activeElement;return !!(a&&a.closest&&a.closest("#wpview,.modal"));}
 async function projectsInit(){await projectsPull(true);setInterval(()=>projectsPull(false),5000);}
 async function projectsPull(initial){
+  if(!initial&&editingShared())return;
   try{
     const res=await fetch(PROJECTS_CLOUD_URL+"?action=get&t="+Date.now());
     if(!res.ok)throw new Error(res.status);
     const data=await res.json();
-    const incoming=JSON.stringify(data.projects||[]);
-    if(incoming!==projectsLastHash&&incoming!==JSON.stringify(state.projects)){
+    const wpIn=(data.workplan&&Array.isArray(data.workplan.items))?data.workplan:{lagDays:7,items:[]};
+    const incoming=sharedHash(data.projects,wpIn);
+    if(incoming!==projectsLastHash&&incoming!==sharedHash(state.projects,state.workplan)){
       state.projects=data.projects||[];
+      state.workplan=wpIn;
       localStorage.setItem(KEY,JSON.stringify(state));
-      if(page==="projects")render();
-      if(!initial)toast("Projects updated from team");
+      if(page==="projects"||page==="workplan")render();
+      if(!initial)toast("Shared plan updated from team");
     }
     projectsLastHash=incoming;
   }catch(e){}
@@ -398,9 +452,10 @@ function projectsPush(){
     try{
       const res=await fetch(PROJECTS_CLOUD_URL+"?action=get&t="+Date.now());
       const remote=res.ok?await res.json():{};
-      // spread remote first so keys this copy doesn't know about (e.g. Modi'in's workplan) survive the read-modify-write
-      const body=JSON.stringify({...remote,stations:remote.stations||[],runs:remote.runs||[],tasks:remote.tasks||[],projects:state.projects});
-      projectsLastHash=JSON.stringify(state.projects);
+      // Read-modify-write: spread remote first, then overwrite ONLY the shared keys, so Modi'in's
+      // own stations/runs/tasks (and any key this copy doesn't know about) survive the POST.
+      const body=JSON.stringify({...remote,stations:remote.stations||[],runs:remote.runs||[],tasks:remote.tasks||[],projects:state.projects,workplan:state.workplan});
+      projectsLastHash=sharedHash(state.projects,state.workplan);
       await fetch(PROJECTS_CLOUD_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body});
     }catch(e){}
   },400);
@@ -421,8 +476,9 @@ function renderMonth(){
     week.forEach(d=>{
       const cell=document.createElement("div");
       const out=d.getMonth()!==m,we=d.getDay()===5||d.getDay()===6;
-      cell.className="cell"+(out?" out":"")+(iso(d)===todayIso?" today":"")+(we&&!out?" wknd":"");
+      cell.className="cell"+(out?" out":"")+(iso(d)===todayIso?" today":"")+(we&&!out?" wknd":"")+(iso(d)===selDate?" sel":"");
       cell.innerHTML=`<div class="cnum">${d.getDate()}</div><div class="cbody"></div>`;
+      cell.addEventListener("click",()=>pickDate(d));
       cell.addEventListener("dblclick",()=>{openRunModal(null,iso(d));});
       wk.appendChild(cell);
     });
@@ -488,7 +544,7 @@ function renderWeek(){
   colW=Math.max(150,(document.getElementById("scroll").clientWidth-getLabelW())/5);
   tl.innerHTML="";
   const head=document.createElement("div");head.className="colhead";head.innerHTML=`<div class="corner">Station</div>`;
-  days.forEach(d=>{const we=d.getDay()===5||d.getDay()===6;const c=document.createElement("div");c.className="daycell"+(iso(d)===todayIso?" today":"")+(we?" wknd":"");c.style.width=colW+"px";c.style.minWidth=colW+"px";c.innerHTML=`<span class="dow">${DOW[d.getDay()]}</span><span class="dnum">${d.getDate()}</span>`;head.appendChild(c);});
+  days.forEach(d=>{const we=d.getDay()===5||d.getDay()===6;const c=document.createElement("div");c.className="daycell"+(iso(d)===todayIso?" today":"")+(we?" wknd":"")+(iso(d)===selDate?" sel":"");c.style.width=colW+"px";c.style.minWidth=colW+"px";c.title="Click to start new runs and tasks on this day";c.innerHTML=`<span class="dow">${DOW[d.getDay()]}</span><span class="dnum">${d.getDate()}</span>`;c.addEventListener("click",()=>pickDate(d));head.appendChild(c);});
   tl.appendChild(head);
   const periodStart=days[0],periodEnd=days[4];
   // General (no-station) tasks lane — only shown if such tasks exist this week and tasks are visible
@@ -542,27 +598,41 @@ function render(){
   if(page==="projects"){
     mg.classList.remove("show");tl.classList.remove("show");depsSvg.style.display="none";
     document.getElementById("empty").style.display="none";
+    wpv.classList.remove("show");
     pg.classList.add("show");
     renderProjects();
     return;
   }
+  if(page==="workplan"){
+    mg.classList.remove("show");tl.classList.remove("show");depsSvg.style.display="none";
+    document.getElementById("empty").style.display="none";
+    pg.classList.remove("show");
+    wpv.classList.add("show");
+    renderWorkplan();
+    return;
+  }
+  wpv.classList.remove("show");
   pg.classList.remove("show");
   document.getElementById("period").textContent=periodLabel();const isMonth=view==="month";mg.classList.toggle("show",isMonth);tl.classList.toggle("show",!isMonth);depsSvg.style.display=isMonth?"none":"block";if(isMonth)renderMonth();else renderWeek();document.getElementById("empty").style.display=state.runs.length?"none":"block";renderLegend();
 }
 function fmtShort(s){const d=parse(s);return `${d.getDate()} ${MON[d.getMonth()].slice(0,3)}`;}
+// Date a brand-new run/task starts on: the day clicked in the calendar, else today.
+function newItemDate(){return selDate||iso(startOfDay(new Date()));}
+function pickDate(d){const v=iso(d);selDate=(selDate===v)?null:v;render();}
 function renderProjects(){
   pg.innerHTML="";
   if(!state.projects.length){pg.innerHTML=`<div class="pcards-empty"><b>No projects yet</b>Use the ＋ New project button to add goals, plan, and timeline for a project.</div>`;return;}
   state.projects.forEach(p=>{
     const card=document.createElement("div");card.className="pcard";
     const nExp=p.workstreams?allExpRows(p).length:(p.experiments||[]).length,nMs=(p.milestones||[]).length,nT=(p.schedule&&p.schedule.tasks)?p.schedule.tasks.length:0;
+    const nWp=((state.workplan&&state.workplan.items)||[]).filter(t=>t.project===p.id).length;
     const span=projectSpan(p);
     card.innerHTML=`<div class="pcard-top"><span class="pdept">${esc(p.dept||"Department TBD")}</span></div>
       <div class="pname">${esc(p.name)||"Untitled project"}</div>
       <div class="powner">${p.owner?esc(p.owner):"No owner set"}</div>
       <div class="ptimeline">${span?`${fmtShort(iso(span.min))} – ${fmtShort(iso(span.max))}`:"No timeline set"}</div>
       ${p.goals?`<div class="pgoals">${esc(p.goals)}</div>`:""}
-      <div class="pmeta">${nExp} experiment${nExp===1?"":"s"} · ${nMs} milestone${nMs===1?"":"s"}${nT?` · ${nT} task${nT===1?"":"s"}`:""}</div>`;
+      <div class="pmeta">${nExp} experiment${nExp===1?"":"s"} · ${nMs} milestone${nMs===1?"":"s"}${nT?` · ${nT} task${nT===1?"":"s"}`:""}${nWp?` · ${nWp} on work plan`:""}</div>`;
     card.addEventListener("click",()=>openProjectModal(p));
     pg.appendChild(card);
   });
@@ -572,10 +642,220 @@ function syncPageButtons(){
   const sched=page==="schedule";
   document.getElementById("scheduleControls").classList.toggle("hide",!sched);
   document.querySelectorAll(".schedule-only").forEach(el=>el.classList.toggle("hide",!sched));
-  document.getElementById("newProject").classList.toggle("hide",sched);
+  document.getElementById("newProject").classList.toggle("hide",page!=="projects");
   document.getElementById("legend").classList.toggle("hide",!sched);
 }
 function renderLegend(){const lg=document.getElementById("legend");lg.innerHTML="";PALETTE.forEach(p=>{const it=document.createElement("div");it.className="item";it.innerHTML=`<span class="lk" style="background:${p.c}"></span>${p.name}`;lg.appendChild(it);});}
+
+/* ---------- Work plan: department-wide MS-Project-style planner ---------- */
+// The work plan is one department-wide plan shared by all five dashboards, and it lives in
+// Modi'in's Sheet. On this site copy it therefore rides the shared projects channel, NOT this
+// site's own CLOUD_URL. This is the ONLY line that differs from Modi'in's copy of this block;
+// everything below it is identical in all five files.
+function saveWp(){saveProjects();}
+const wpv=document.getElementById("wpview");
+let wpZoom=26; // px per week
+const WP_SLATE="#6c7a82";
+const WPCOLS=[["#",34],["Run / experiment",200],["Wks",54],["Station",84],["Project",120],["Workstream",104],["Preds",60],["Start",118],["",30]];
+function wpDays(t){return Math.max(1,Math.round((parseFloat(t.dur)||1)*7));}
+function projColor(pid){const i=state.projects.findIndex(p=>p.id===pid);return i<0?WP_SLATE:PALETTE[i%PALETTE.length].c;}
+function computeWorkplan(){
+  const wpst=state.workplan,items=wpst.items||[];
+  const lag=Math.max(0,parseInt(wpst.lagDays)||0);
+  const byIdItem={};items.forEach(t=>byIdItem[t.id]=t);
+  const validDeps=t=>(t.deps||[]).filter(d=>d!==t.id&&byIdItem[d]);
+  const indeg={},dependents={};
+  items.forEach(t=>{indeg[t.id]=0;});
+  items.forEach(t=>validDeps(t).forEach(d=>{indeg[t.id]++;(dependents[d]=dependents[d]||[]).push(t.id);}));
+  const queue=items.filter(t=>indeg[t.id]===0).map(t=>t.id),order=[];
+  while(queue.length){const id=queue.shift();order.push(id);(dependents[id]||[]).forEach(n=>{if(--indeg[n]===0)queue.push(n);});}
+  const cyclic=new Set(items.filter(t=>!order.includes(t.id)).map(t=>t.id));
+  const byId={},baseById={};
+  order.forEach(id=>{const t=byIdItem[id];
+    const predEnds=validDeps(t).map(d=>byId[d]&&byId[d].end).filter(Boolean);
+    let base=null;
+    if(predEnds.length){let m=predEnds[0];predEnds.forEach(e=>{if(parse(e)>parse(m))m=e;});base=iso(addDays(parse(m),1+lag));}
+    const manual=/^\d{4}-\d{2}-\d{2}$/.test(t.start||"")?t.start:"";
+    let start;
+    if(base&&manual)start=parse(manual)>parse(base)?manual:base;
+    else if(base)start=base;
+    else start=manual||iso(startOfDay(new Date()));
+    baseById[id]=base;
+    byId[id]={start,end:endFromDuration(start,wpDays(t))};
+  });
+  let span=null;
+  order.forEach(id=>{const o=byId[id],s=parse(o.start),e=parse(o.end);if(!span)span={min:s,max:e};else{if(s<span.min)span.min=s;if(e>span.max)span.max=e;}});
+  // soft flag: two runs on the same station overlapping in time
+  const conflicts=new Set(),msgs=[];
+  const byStation={};
+  items.forEach(t=>{const st=(t.station||"").trim().toLowerCase();if(!st||!byId[t.id])return;(byStation[st]=byStation[st]||[]).push(t);});
+  Object.keys(byStation).forEach(st=>{const arr=byStation[st];
+    for(let i=0;i<arr.length;i++)for(let j=i+1;j<arr.length;j++){
+      const a=byId[arr[i].id],b=byId[arr[j].id];
+      if(parse(a.start)<=parse(b.end)&&parse(b.start)<=parse(a.end)){
+        conflicts.add(arr[i].id);conflicts.add(arr[j].id);
+        msgs.push(`${arr[i].station.trim()} double-booked: "${arr[i].name||"untitled"}" overlaps "${arr[j].name||"untitled"}"`);
+      }
+    }});
+  return {byId,baseById,order,span,cyclic,conflicts,msgs};
+}
+function wpDepsDisplay(t){const idx={};state.workplan.items.forEach((x,i)=>idx[x.id]=i+1);return (t.deps||[]).filter(d=>idx[d]).map(d=>idx[d]).join(",");}
+function wpParseDeps(val,selfIdx){
+  const items=state.workplan.items,ids=[];
+  val.split(/[,\s]+/).forEach(tok=>{const n=parseInt(tok);if(!n||n<1||n>items.length||n-1===selfIdx)return;const t=items[n-1];if(!t||ids.includes(t.id))return;ids.push(t.id);});
+  return ids;
+}
+function wpSummaryHTML(cs){
+  const n=state.workplan.items.length;
+  if(!cs.span||!n)return "Nothing planned yet — type in the first row below.";
+  const wks=Math.round((dayDiff(cs.span.min,cs.span.max)+1)/7);
+  return `<b>${n}</b> run${n===1?"":"s"} · <b>${fmtShort(iso(cs.span.min))} – ${fmtShort(iso(cs.span.max))}</b> · ~${wks} weeks end to end`;
+}
+function wpWarnHTML(cs){
+  const lines=[];
+  if(cs.cyclic.size)lines.push(`⚠ ${cs.cyclic.size} row${cs.cyclic.size===1?"":"s"} skipped — circular dependency in Preds`);
+  cs.msgs.slice(0,4).forEach(m=>lines.push("⚠ "+m));
+  if(cs.msgs.length>4)lines.push(`…and ${cs.msgs.length-4} more station overlap${cs.msgs.length-4===1?"":"s"}`);
+  return lines.map(l=>`<div class="line">${esc(l)}</div>`).join("");
+}
+function wpTableHTML(cs){
+  const items=state.workplan.items;
+  const head=`<div class="wp-tr head">${WPCOLS.map(c=>`<div class="wp-td" style="width:${c[1]}px">${c[0]}</div>`).join("")}</div>`;
+  const rows=items.map((t,i)=>{
+    const o=cs.byId[t.id],isCyc=cs.cyclic.has(t.id);
+    const hasDeps=(t.deps||[]).filter(d=>d!==t.id&&items.some(x=>x.id===d)).length>0;
+    const startCell=hasDeps
+      ?`<div class="wp-ro" title="${t.start?"Pushed later by hand — ↺ returns it to its predecessors":"Follows its predecessors"}"><span class="wp-ro-date" data-i="${i}">${isCyc?"⚠ cycle":fmtShort(o.start)}</span>${t.start&&!isCyc?`<button type="button" class="wp-unpin" data-i="${i}" title="Release manual date — follow predecessors">↺</button>`:""}</div>`
+      :`<input type="date" class="wp-start" data-i="${i}" value="${t.start||(o?o.start:"")}">`;
+    return `<div class="wp-tr${cs.conflicts.has(t.id)?" conflict":""}" data-id="${t.id}">
+      <div class="wp-td num" style="width:${WPCOLS[0][1]}px">${i+1}</div>
+      <div class="wp-td" style="width:${WPCOLS[1][1]}px"><input class="wp-name" dir="auto" data-i="${i}" value="${esc(t.name)}" placeholder="Run name"></div>
+      <div class="wp-td" style="width:${WPCOLS[2][1]}px"><input type="number" class="wp-dur" data-i="${i}" min="0.2" step="0.5" value="${t.dur}"></div>
+      <div class="wp-td" style="width:${WPCOLS[3][1]}px"><input class="wp-station" data-i="${i}" list="wp-stations" value="${esc(t.station||"")}" placeholder="—"></div>
+      <div class="wp-td" style="width:${WPCOLS[4][1]}px"><select class="wp-proj" data-i="${i}"><option value="">—</option>${state.projects.map(p=>`<option value="${p.id}"${p.id===t.project?" selected":""}>${esc(p.name)}</option>`).join("")}</select></div>
+      <div class="wp-td" style="width:${WPCOLS[5][1]}px"><input class="wp-ws" dir="auto" data-i="${i}" value="${esc(t.workstream||"")}" placeholder="—"></div>
+      <div class="wp-td" style="width:${WPCOLS[6][1]}px"><input class="wp-deps" data-i="${i}" value="${wpDepsDisplay(t)}" placeholder="1,3"></div>
+      <div class="wp-td" style="width:${WPCOLS[7][1]}px">${startCell}</div>
+      <div class="wp-td ctl" style="width:${WPCOLS[8][1]}px"><button type="button" class="wp-del" data-i="${i}" title="Remove">×</button></div>
+    </div>`;
+  }).join("");
+  const fillerW=WPCOLS.slice(2).reduce((a,c)=>a+c[1],0);
+  const ghost=`<div class="wp-tr ghost"><div class="wp-td num" style="width:${WPCOLS[0][1]}px">${items.length+1}</div><div class="wp-td" style="width:${WPCOLS[1][1]}px"><input class="wp-name-ghost" dir="auto" placeholder="＋ Add a run…"></div><div class="wp-td" style="width:${fillerW}px;border-right:none"></div></div>`;
+  return head+rows+ghost;
+}
+function wpRangeCalc(cs){
+  const today=startOfDay(new Date());
+  const lo=cs.span&&cs.span.min<today?cs.span.min:today;
+  const hi=cs.span&&cs.span.max>today?cs.span.max:today;
+  const minD=new Date(lo.getFullYear(),lo.getMonth(),1);
+  let maxD=new Date(hi.getFullYear(),hi.getMonth()+2,0);
+  if(dayDiff(minD,maxD)<180)maxD=new Date(minD.getFullYear(),minD.getMonth()+6,0);
+  return {minD,maxD};
+}
+function wpGanttHTML(cs){
+  const items=state.workplan.items;
+  if(!items.length)return `<div class="hint" style="padding:16px">The timeline appears here as you add runs.</div>`;
+  const {minD,maxD}=wpRangeCalc(cs);
+  const ppd=wpZoom/7,W=Math.round((dayDiff(minD,maxD)+1)*ppd);
+  let mh="",glines="";
+  let m=new Date(minD);
+  while(m<=maxD){
+    const mEnd=new Date(m.getFullYear(),m.getMonth()+1,0);
+    const left=dayDiff(minD,m)*ppd,wpx=(dayDiff(m,mEnd)+1)*ppd;
+    mh+=`<div class="wp-month" style="left:${left}px;width:${wpx}px">${MON[m.getMonth()].slice(0,3)} ${String(m.getFullYear()).slice(2)}</div>`;
+    glines+=`<div class="wp-gline" style="left:${left}px"></div>`;
+    m=new Date(m.getFullYear(),m.getMonth()+1,1);
+  }
+  const today=startOfDay(new Date());
+  const todayLine=(today>=minD&&today<=maxD)?`<div class="wp-today" style="left:${dayDiff(minD,today)*ppd}px"></div>`:"";
+  const rows=items.map(t=>{
+    const o=cs.byId[t.id];
+    if(!o||cs.cyclic.has(t.id))return `<div class="wp-grow"></div>`;
+    const left=dayDiff(minD,parse(o.start))*ppd,wpx=Math.max(6,wpDays(t)*ppd-2);
+    const conflict=cs.conflicts.has(t.id);
+    const tip=`${t.name||"Untitled"} · ${fmtShort(o.start)} – ${fmtShort(o.end)} · ${t.dur} wk${t.station?" · "+t.station:""}${conflict?" · ⚠ overlaps another run on this station":""}`;
+    return `<div class="wp-grow"><div class="wp-bar${conflict?" conflict":""}" data-id="${t.id}" style="left:${left}px;width:${wpx}px;background:${projColor(t.project)}" title="${esc(tip)}">${esc(t.name||"")}</div></div>`;
+  }).join("");
+  return `<div style="width:${W}px"><div class="wp-ghead">${mh}</div><div class="wp-grows">${glines}${todayLine}${rows}</div></div>`;
+}
+function renderWorkplan(){
+  const wpst=state.workplan,items=wpst.items;
+  const cs=computeWorkplan();
+  const stationOpts=[...new Set([...state.stations.map(s=>s.name),...items.map(t=>(t.station||"").trim()).filter(Boolean)])];
+  const usedProjects=state.projects.filter(p=>items.some(t=>t.project===p.id));
+  const legendHTML=usedProjects.map(p=>`<span><span class="lk" style="background:${projColor(p.id)}"></span>${esc(p.name)}</span>`).join("")
+    +(items.some(t=>!t.project)?`<span><span class="lk" style="background:${WP_SLATE}"></span>No project</span>`:"");
+  wpv.innerHTML=`
+    <div class="wp-toolbar">
+      <div class="wp-summary" id="wp-summary">${wpSummaryHTML(cs)}</div>
+      <label class="wp-lag">Standard lag <input type="number" id="wp-lag" min="0" max="90" value="${Math.max(0,parseInt(wpst.lagDays)||0)}"> days</label>
+      <div class="seg wp-zoom" id="wp-zoom">
+        <button data-z="14"${wpZoom===14?' class="on"':""}>Year</button>
+        <button data-z="26"${wpZoom===26?' class="on"':""}>6 mo</button>
+        <button data-z="44"${wpZoom===44?' class="on"':""}>Zoom</button>
+      </div>
+      <div class="wp-legendrow">${legendHTML}</div>
+    </div>
+    <div class="wp-warn" id="wp-warn">${wpWarnHTML(cs)}</div>
+    <div class="wp-main"><div class="wp-left">${wpTableHTML(cs)}</div><div class="wp-gantt">${wpGanttHTML(cs)}</div></div>
+    <datalist id="wp-stations">${stationOpts.map(s=>`<option value="${esc(s)}">`).join("")}</datalist>`;
+  wpWire();
+}
+function wpRepaint(){
+  const cs=computeWorkplan();
+  const g=wpv.querySelector(".wp-gantt");if(g)g.innerHTML=wpGanttHTML(cs);
+  const s=wpv.querySelector("#wp-summary");if(s)s.innerHTML=wpSummaryHTML(cs);
+  const w=wpv.querySelector("#wp-warn");if(w)w.innerHTML=wpWarnHTML(cs);
+  wpv.querySelectorAll(".wp-tr[data-id]").forEach(r=>r.classList.toggle("conflict",cs.conflicts.has(r.dataset.id)));
+  wpv.querySelectorAll(".wp-ro-date").forEach(el=>{const t=state.workplan.items[+el.dataset.i];if(!t)return;const o=cs.byId[t.id];el.textContent=cs.cyclic.has(t.id)?"⚠ cycle":(o?fmtShort(o.start):"—");});
+}
+function wpWire(){
+  const wpst=state.workplan,items=wpst.items;
+  const lag=wpv.querySelector("#wp-lag");
+  lag.onchange=()=>{wpst.lagDays=Math.max(0,parseInt(lag.value)||0);saveWp();renderWorkplan();};
+  wpv.querySelector("#wp-zoom").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;wpZoom=+b.dataset.z;renderWorkplan();});
+  wpv.querySelectorAll(".wp-name").forEach(inp=>{
+    inp.oninput=()=>{items[+inp.dataset.i].name=inp.value;saveWp();wpRepaint();};
+    inp.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();const nxt=wpv.querySelector(`.wp-name[data-i="${+inp.dataset.i+1}"]`)||wpv.querySelector(".wp-name-ghost");if(nxt)nxt.focus();}};
+  });
+  wpv.querySelectorAll(".wp-dur").forEach(inp=>inp.oninput=()=>{const v=parseFloat(inp.value);if(v&&v>0)items[+inp.dataset.i].dur=v;saveWp();wpRepaint();});
+  wpv.querySelectorAll(".wp-station").forEach(inp=>inp.oninput=()=>{items[+inp.dataset.i].station=inp.value;saveWp();wpRepaint();});
+  wpv.querySelectorAll(".wp-proj").forEach(sel=>sel.onchange=()=>{items[+sel.dataset.i].project=sel.value;saveWp();renderWorkplan();});
+  wpv.querySelectorAll(".wp-ws").forEach(inp=>inp.oninput=()=>{items[+inp.dataset.i].workstream=inp.value;saveWp();});
+  wpv.querySelectorAll(".wp-deps").forEach(inp=>{
+    const commit=()=>{const i=+inp.dataset.i,t=items[i];if(!t)return;t.deps=wpParseDeps(inp.value,i);if(t.deps.length)t.start="";saveWp();renderWorkplan();};
+    inp.onchange=commit;
+    inp.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();commit();}};
+  });
+  wpv.querySelectorAll(".wp-start").forEach(inp=>inp.onchange=()=>{items[+inp.dataset.i].start=inp.value;saveWp();wpRepaint();});
+  wpv.querySelectorAll(".wp-unpin").forEach(b=>b.onclick=()=>{items[+b.dataset.i].start="";saveWp();renderWorkplan();});
+  wpv.querySelectorAll(".wp-del").forEach(b=>b.onclick=()=>{const i=+b.dataset.i,id=items[i].id;items.splice(i,1);items.forEach(t=>t.deps=(t.deps||[]).filter(d=>d!==id));saveWp();renderWorkplan();});
+  const ghost=wpv.querySelector(".wp-name-ghost");
+  if(ghost)ghost.oninput=()=>{
+    items.push({id:uid(),name:ghost.value,dur:2,station:"",project:"",workstream:"",deps:[],start:iso(startOfDay(new Date()))});
+    saveWp();renderWorkplan();
+    const inp=wpv.querySelector(`.wp-name[data-i="${items.length-1}"]`);
+    if(inp){inp.focus();inp.setSelectionRange(inp.value.length,inp.value.length);}
+  };
+}
+// Drag a bar to reschedule: free for root runs; dependent runs can be pushed later but snap back to their predecessors
+let wpDrag=null;
+wpv.addEventListener("pointerdown",e=>{const bar=e.target.closest(".wp-bar");if(!bar)return;wpDrag={id:bar.dataset.id,el:bar,startX:e.clientX,moved:false};bar.setPointerCapture(e.pointerId);bar.classList.add("dragging");e.preventDefault();});
+wpv.addEventListener("pointermove",e=>{if(!wpDrag)return;const dx=e.clientX-wpDrag.startX;if(Math.abs(dx)>3)wpDrag.moved=true;wpDrag.el.style.transform=`translateX(${dx}px)`;});
+wpv.addEventListener("pointerup",e=>{
+  if(!wpDrag)return;const d=wpDrag;wpDrag=null;
+  d.el.classList.remove("dragging");d.el.style.transform="";
+  const steps=Math.round((e.clientX-d.startX)/(wpZoom/7));
+  if(!d.moved||steps===0)return;
+  const t=state.workplan.items.find(x=>x.id===d.id);if(!t)return;
+  const cs=computeWorkplan();const o=cs.byId[t.id];if(!o)return;
+  const ns=addDays(parse(o.start),steps);
+  const base=cs.baseById[t.id];
+  if(base&&ns<=parse(base)){t.start="";if(iso(ns)!==base)toast("Snapped back — it can't start before its predecessors");}
+  else t.start=iso(ns);
+  saveWp();renderWorkplan();
+});
+wpv.addEventListener("pointercancel",()=>{if(wpDrag){wpDrag.el.classList.remove("dragging");wpDrag.el.style.transform="";wpDrag=null;}});
 
 function cascade(){const byId={};state.runs.forEach(r=>byId[r.id]=r);let changed=true,guard=0;while(changed&&guard++<300){changed=false;state.runs.forEach(r=>{(r.deps||[]).forEach(depId=>{const pred=byId[depId];if(!pred)return;const minStart=addDays(parse(pred.end),1);if(parse(r.start)<minStart){const d=durOf(r);r.start=iso(minStart);r.end=endFromDuration(r.start,d);changed=true;}});});}}
 
@@ -596,7 +876,8 @@ function swatchHTML(sel){return `<div class="swatches">`+PALETTE.map(p=>`<div cl
 function openRunModal(run,presetDate){
   const isNew=!run;
   if(!state.stations||state.stations.length===0){state.stations=structuredClone(DEFAULT_STATIONS);save();}
-  const r=run||{id:uid(),station:state.stations[0].id,title:"",start:presetDate||iso(anchor),end:endFromDuration(presetDate||iso(anchor),7),color:PALETTE[0].c,phase:"",notes:"",deps:[]};
+  const d0=presetDate||newItemDate();
+  const r=run||{id:uid(),station:state.stations[0].id,title:"",start:d0,end:endFromDuration(d0,7),color:PALETTE[0].c,phase:"",notes:"",deps:[]};
   const others=state.runs.filter(x=>x.id!==r.id);
   modal.innerHTML=`<h2>${isNew?"New run":"Edit run"}<button class="x" id="mx">×</button></h2>
     <div class="fld"><label>Run name</label><input id="f-title" dir="auto" value="${esc(r.title)}" placeholder="e.g. Strawberry batch 12 — DO cascade"></div>
@@ -628,7 +909,7 @@ function openRunModal(run,presetDate){
 }
 function openTaskModal(task,presetDate){
   const isNew=!task;
-  const t=task||{id:uid(),station:"",title:"",date:presetDate||iso(anchor),color:PALETTE[3].c,done:false,runId:null};
+  const t=task||{id:uid(),station:"",title:"",date:presetDate||newItemDate(),color:PALETTE[3].c,done:false,runId:null};
   modal.innerHTML=`<h2>${isNew?"New task":"Edit task"}<button class="x" id="mx">×</button></h2>
     <div class="fld"><label>Task</label><input id="t-title" dir="auto" value="${esc(t.title)}" placeholder="e.g. Calibrate pH probe"></div>
     <div class="fld row"><div><label>Station</label><select id="t-station"><option value=""${t.station?"":" selected"}>General (no station)</option>${state.stations.map(s=>`<option value="${s.id}"${s.id===t.station?" selected":""}>${s.name}</option>`).join("")}</select></div><div><label>Date</label><input type="date" id="t-date" value="${t.date}"></div></div>
@@ -643,6 +924,12 @@ function openTaskModal(task,presetDate){
 }
 function allExpRows(p){return (p.workstreams||[]).flatMap(w=>w.rows||[]);}
 function projectSpan(p){
+  const wpItems=((state.workplan&&state.workplan.items)||[]).filter(t=>t.project===p.id);
+  if(wpItems.length){
+    const cs=computeWorkplan();let span=null;
+    wpItems.forEach(t=>{const o=cs.byId[t.id];if(!o)return;const s=parse(o.start),e=parse(o.end);if(!span)span={min:s,max:e};else{if(s<span.min)span.min=s;if(e>span.max)span.max=e;}});
+    if(span)return span;
+  }
   if(p.schedule&&p.schedule.tasks&&p.schedule.tasks.length){
     const s=computeSchedule(p.schedule.tasks).span;
     if(s)return s;
@@ -893,7 +1180,7 @@ function stepBack(){if(view==="week")anchor=addDays(anchor,-7);else if(monthSpan
 function stepFwd(){if(view==="week")anchor=addDays(anchor,7);else if(monthSpan>0)anchor=addDays(anchor,7*monthSpan);else anchor=new Date(anchor.getFullYear(),anchor.getMonth()+1,1);render();}
 document.getElementById("prev").onclick=stepBack;
 document.getElementById("next").onclick=stepFwd;
-document.getElementById("todayBtn").onclick=()=>{anchor=startOfDay(new Date());if(monthSpan===0)monthRolling=false;render();};
+document.getElementById("todayBtn").onclick=()=>{anchor=startOfDay(new Date());selDate=null;if(monthSpan===0)monthRolling=false;render();};
 document.getElementById("newRun").onclick=()=>openRunModal(null);
 document.getElementById("newTask").onclick=()=>openTaskModal(null);
 const taskToggle=document.getElementById("taskToggle");
@@ -909,7 +1196,7 @@ document.getElementById("manageStations").onclick=()=>{menu.classList.remove("op
 document.getElementById("clearAll").onclick=()=>{menu.classList.remove("open");if(confirm("Clear all runs and tasks? Export first if you want a backup.")){state.runs=[];state.tasks=[];save();render();toast("Cleared");}};
 document.getElementById("exportBtn").onclick=()=>{menu.classList.remove("open");const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="novella_bioreactor_schedule.json";a.click();toast("Exported");};
 document.getElementById("importBtn").onclick=()=>{menu.classList.remove("open");document.getElementById("fileInput").click();};
-document.getElementById("fileInput").onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{const d=JSON.parse(rd.result);if(!d.runs)throw 0;state={stations:(d.stations&&d.stations.length)?d.stations:structuredClone(DEFAULT_STATIONS),runs:d.runs||[],tasks:d.tasks||[],projects:state.projects||[]};save();render();toast("Imported");}catch(err){toast("Couldn't read that file");}};rd.readAsText(f);e.target.value="";};
+document.getElementById("fileInput").onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{const d=JSON.parse(rd.result);if(!d.runs)throw 0;state={stations:(d.stations&&d.stations.length)?d.stations:structuredClone(DEFAULT_STATIONS),runs:d.runs||[],tasks:d.tasks||[],projects:state.projects||[],workplan:state.workplan};save();render();toast("Imported");}catch(err){toast("Couldn't read that file");}};rd.readAsText(f);e.target.value="";};
 
 let activeModalCtx=null,cellSel=null,cellDragStart=null;
 function paintSelection(){
@@ -1012,6 +1299,7 @@ function wheelStep(dir){ // dir +1 = forward in time (scroll down), -1 = back (s
   render();
 }
 scrollEl.addEventListener("wheel",e=>{
+  if(page!=="schedule")return; // work plan / projects scroll normally
   // only hijack vertical wheel; let trackpad horizontal pass
   if(Math.abs(e.deltaY)<Math.abs(e.deltaX))return;
   // if the content actually overflows vertically, let the user scroll it normally

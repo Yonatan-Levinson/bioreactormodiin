@@ -74,6 +74,8 @@
   .daycell .dnum{font-size:14px;font-weight:700;color:var(--ink);}
   .daycell.today{background:rgba(90,157,47,.10);}
   .daycell.today .dnum{color:var(--leaf-deep);}
+  .daycell{cursor:pointer;}
+  .daycell.sel{background:rgba(58,143,204,.14);box-shadow:inset 0 -2px 0 var(--sky);}
   .station{display:flex;border-bottom:1px solid var(--line-soft);}
   .station-label{position:sticky;left:0;z-index:6;width:var(--label-w);min-width:var(--label-w);background:var(--panel);border-right:1px solid var(--line);display:flex;align-items:center;gap:8px;padding:0 12px;font-weight:600;font-size:13px;}
   .station-dot{width:8px;height:8px;border-radius:2px;flex:none;background:var(--leaf);}
@@ -113,6 +115,7 @@
   .cell.out{background:var(--panel-2);opacity:.6;}
   .cell.today{border-color:var(--leaf);box-shadow:0 0 0 1px var(--leaf) inset;}
   .cell.wknd{background:rgba(40,48,33,.018);}
+  .cell.sel{border-color:var(--sky);box-shadow:0 0 0 2px var(--sky) inset;}
   .cell .cnum{font-size:14px;font-weight:700;color:var(--ink-dim);align-self:center;line-height:22px;}
   .cell.today .cnum{background:var(--leaf);color:#fff;border-radius:50%;width:23px;height:23px;display:flex;align-items:center;justify-content:center;font-size:13px;align-self:center;}
   .cell .cbody{flex:1;}
@@ -362,6 +365,7 @@ let state=load()||{stations:structuredClone(DEFAULT_STATIONS),runs:[],tasks:[],p
 if(!state.projects)state.projects=[];
 if(!state.workplan||!Array.isArray(state.workplan.items))state.workplan={lagDays:7,items:[]};
 let page="schedule",view="month",showTasks=true,anchor=startOfDay(new Date());
+let selDate=null; // ISO date the user clicked in the calendar; new runs/tasks start here (null = today)
 let monthSpan=2; // 0 = full month; otherwise number of weeks to show. Default: 2-week view.
 let monthRolling=false; // when true, full-month shows a rolling 5-week window (set by wheel)
 let cloud={on:false,polling:null,lastHash:""};
@@ -403,13 +407,17 @@ function periodLabel(){
 }
 
 function dataHash(){return JSON.stringify({s:state.stations,r:state.runs,t:state.tasks,p:state.projects,w:state.workplan});}
+// Never swap state out from under someone mid-edit: re-rendering rebuilds the work-plan inputs
+// (losing focus and caret) and row indexes could shift under an in-flight change. Returning
+// early leaves lastHash untouched, so the very next poll applies whatever the team changed.
+function editingShared(){const a=document.activeElement;return !!(a&&a.closest&&a.closest("#wpview,.modal"));}
 function load(){try{const s=localStorage.getItem(KEY);return s?JSON.parse(s):null;}catch(e){return null;}}
 let saveTimer;
 function save(push=true){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}flashSaved();if(push&&cloud.on)cloudPush();}
 function flashSaved(){const el=document.getElementById("saveState");if(!el)return;el.textContent=cloud.on?"Synced ✓":"Saved on this device ✓";clearTimeout(saveTimer);saveTimer=setTimeout(()=>{el.textContent=cloud.on?"☁ Live — shared with team":"This device only";},1500);}
 
 async function cloudInit(){if(!CLOUD_URL){updateCloudUI();return;}cloud.on=true;updateCloudUI();await cloudPull(true);cloud.polling=setInterval(()=>cloudPull(false),5000);}
-async function cloudPull(initial){if(!CLOUD_URL)return;try{const res=await fetch(CLOUD_URL+"?action=get&t="+Date.now());if(!res.ok)throw new Error(res.status);const data=await res.json();if(data&&data.runs){const wpIn=(data.workplan&&Array.isArray(data.workplan.items))?data.workplan:{lagDays:7,items:[]};const incoming=JSON.stringify({s:data.stations,r:data.runs,t:data.tasks,p:data.projects||[],w:wpIn});if(incoming!==cloud.lastHash&&incoming!==dataHash()){state={stations:(data.stations&&data.stations.length)?data.stations:structuredClone(DEFAULT_STATIONS),runs:data.runs||[],tasks:data.tasks||[],projects:data.projects||[],workplan:wpIn};localStorage.setItem(KEY,JSON.stringify(state));render();if(!initial)toast("Updated from team");}cloud.lastHash=incoming;}}catch(e){const ss=document.getElementById("saveState");if(ss)ss.textContent="⚠ Sync paused — retrying";}}
+async function cloudPull(initial){if(!CLOUD_URL)return;if(!initial&&editingShared())return;try{const res=await fetch(CLOUD_URL+"?action=get&t="+Date.now());if(!res.ok)throw new Error(res.status);const data=await res.json();if(data&&data.runs){const wpIn=(data.workplan&&Array.isArray(data.workplan.items))?data.workplan:{lagDays:7,items:[]};const incoming=JSON.stringify({s:data.stations,r:data.runs,t:data.tasks,p:data.projects||[],w:wpIn});if(incoming!==cloud.lastHash&&incoming!==dataHash()){state={stations:(data.stations&&data.stations.length)?data.stations:structuredClone(DEFAULT_STATIONS),runs:data.runs||[],tasks:data.tasks||[],projects:data.projects||[],workplan:wpIn};localStorage.setItem(KEY,JSON.stringify(state));render();if(!initial)toast("Updated from team");}cloud.lastHash=incoming;}}catch(e){const ss=document.getElementById("saveState");if(ss)ss.textContent="⚠ Sync paused — retrying";}}
 let pushTimer;
 function cloudPush(){clearTimeout(pushTimer);pushTimer=setTimeout(async()=>{try{const body=JSON.stringify({stations:state.stations,runs:state.runs,tasks:state.tasks,projects:state.projects,workplan:state.workplan});cloud.lastHash=JSON.stringify({s:state.stations,r:state.runs,t:state.tasks,p:state.projects,w:state.workplan});await fetch(CLOUD_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body});}catch(e){const ss=document.getElementById("saveState");if(ss)ss.textContent="⚠ Couldn't sync — saved locally";}},400);}
 function updateCloudUI(){const note=document.getElementById("cloudNote"),btn=document.getElementById("connectCloud");if(cloud.on){note.innerHTML="<b>Cloud sync is ON.</b> Everyone on the shared link sees changes live.";btn.textContent="⛅ Cloud settings…";const ss=document.getElementById("saveState");if(ss)ss.textContent="☁ Live — shared with team";}else{note.innerHTML="<b>Storage:</b> this device only. Connect a Google Sheet to share live.";btn.textContent="⛅ Connect cloud sync…";}}
@@ -428,8 +436,9 @@ function renderMonth(){
     week.forEach(d=>{
       const cell=document.createElement("div");
       const out=d.getMonth()!==m,we=d.getDay()===5||d.getDay()===6;
-      cell.className="cell"+(out?" out":"")+(iso(d)===todayIso?" today":"")+(we&&!out?" wknd":"");
+      cell.className="cell"+(out?" out":"")+(iso(d)===todayIso?" today":"")+(we&&!out?" wknd":"")+(iso(d)===selDate?" sel":"");
       cell.innerHTML=`<div class="cnum">${d.getDate()}</div><div class="cbody"></div>`;
+      cell.addEventListener("click",()=>pickDate(d));
       cell.addEventListener("dblclick",()=>{openRunModal(null,iso(d));});
       wk.appendChild(cell);
     });
@@ -495,7 +504,7 @@ function renderWeek(){
   colW=Math.max(150,(document.getElementById("scroll").clientWidth-getLabelW())/5);
   tl.innerHTML="";
   const head=document.createElement("div");head.className="colhead";head.innerHTML=`<div class="corner">Station</div>`;
-  days.forEach(d=>{const we=d.getDay()===5||d.getDay()===6;const c=document.createElement("div");c.className="daycell"+(iso(d)===todayIso?" today":"")+(we?" wknd":"");c.style.width=colW+"px";c.style.minWidth=colW+"px";c.innerHTML=`<span class="dow">${DOW[d.getDay()]}</span><span class="dnum">${d.getDate()}</span>`;head.appendChild(c);});
+  days.forEach(d=>{const we=d.getDay()===5||d.getDay()===6;const c=document.createElement("div");c.className="daycell"+(iso(d)===todayIso?" today":"")+(we?" wknd":"")+(iso(d)===selDate?" sel":"");c.style.width=colW+"px";c.style.minWidth=colW+"px";c.title="Click to start new runs and tasks on this day";c.innerHTML=`<span class="dow">${DOW[d.getDay()]}</span><span class="dnum">${d.getDate()}</span>`;c.addEventListener("click",()=>pickDate(d));head.appendChild(c);});
   tl.appendChild(head);
   const periodStart=days[0],periodEnd=days[4];
   // General (no-station) tasks lane — only shown if such tasks exist this week and tasks are visible
@@ -567,6 +576,9 @@ function render(){
   document.getElementById("period").textContent=periodLabel();const isMonth=view==="month";mg.classList.toggle("show",isMonth);tl.classList.toggle("show",!isMonth);depsSvg.style.display=isMonth?"none":"block";if(isMonth)renderMonth();else renderWeek();document.getElementById("empty").style.display=state.runs.length?"none":"block";renderLegend();
 }
 function fmtShort(s){const d=parse(s);return `${d.getDate()} ${MON[d.getMonth()].slice(0,3)}`;}
+// Date a brand-new run/task starts on: the day clicked in the calendar, else today.
+function newItemDate(){return selDate||iso(startOfDay(new Date()));}
+function pickDate(d){const v=iso(d);selDate=(selDate===v)?null:v;render();}
 function renderProjects(){
   pg.innerHTML="";
   if(!state.projects.length){pg.innerHTML=`<div class="pcards-empty"><b>No projects yet</b>Use the ＋ New project button to add goals, plan, and timeline for a project.</div>`;return;}
@@ -596,6 +608,11 @@ function syncPageButtons(){
 function renderLegend(){const lg=document.getElementById("legend");lg.innerHTML="";PALETTE.forEach(p=>{const it=document.createElement("div");it.className="item";it.innerHTML=`<span class="lk" style="background:${p.c}"></span>${p.name}`;lg.appendChild(it);});}
 
 /* ---------- Work plan: department-wide MS-Project-style planner ---------- */
+// The work plan is one department-wide plan shared by all five dashboards, so it always
+// lives in Modi'in's Sheet. This is the ONLY line that differs between this file and the
+// four site copies: here `workplan` rides the schedule channel (same Sheet), there it
+// rides the shared projects channel. Everything below this line is identical in all five.
+function saveWp(){save();}
 const wpv=document.getElementById("wpview");
 let wpZoom=26; // px per week
 const WP_SLATE="#6c7a82";
@@ -755,28 +772,28 @@ function wpRepaint(){
 function wpWire(){
   const wpst=state.workplan,items=wpst.items;
   const lag=wpv.querySelector("#wp-lag");
-  lag.onchange=()=>{wpst.lagDays=Math.max(0,parseInt(lag.value)||0);save();renderWorkplan();};
+  lag.onchange=()=>{wpst.lagDays=Math.max(0,parseInt(lag.value)||0);saveWp();renderWorkplan();};
   wpv.querySelector("#wp-zoom").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;wpZoom=+b.dataset.z;renderWorkplan();});
   wpv.querySelectorAll(".wp-name").forEach(inp=>{
-    inp.oninput=()=>{items[+inp.dataset.i].name=inp.value;save();wpRepaint();};
+    inp.oninput=()=>{items[+inp.dataset.i].name=inp.value;saveWp();wpRepaint();};
     inp.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();const nxt=wpv.querySelector(`.wp-name[data-i="${+inp.dataset.i+1}"]`)||wpv.querySelector(".wp-name-ghost");if(nxt)nxt.focus();}};
   });
-  wpv.querySelectorAll(".wp-dur").forEach(inp=>inp.oninput=()=>{const v=parseFloat(inp.value);if(v&&v>0)items[+inp.dataset.i].dur=v;save();wpRepaint();});
-  wpv.querySelectorAll(".wp-station").forEach(inp=>inp.oninput=()=>{items[+inp.dataset.i].station=inp.value;save();wpRepaint();});
-  wpv.querySelectorAll(".wp-proj").forEach(sel=>sel.onchange=()=>{items[+sel.dataset.i].project=sel.value;save();renderWorkplan();});
-  wpv.querySelectorAll(".wp-ws").forEach(inp=>inp.oninput=()=>{items[+inp.dataset.i].workstream=inp.value;save();});
+  wpv.querySelectorAll(".wp-dur").forEach(inp=>inp.oninput=()=>{const v=parseFloat(inp.value);if(v&&v>0)items[+inp.dataset.i].dur=v;saveWp();wpRepaint();});
+  wpv.querySelectorAll(".wp-station").forEach(inp=>inp.oninput=()=>{items[+inp.dataset.i].station=inp.value;saveWp();wpRepaint();});
+  wpv.querySelectorAll(".wp-proj").forEach(sel=>sel.onchange=()=>{items[+sel.dataset.i].project=sel.value;saveWp();renderWorkplan();});
+  wpv.querySelectorAll(".wp-ws").forEach(inp=>inp.oninput=()=>{items[+inp.dataset.i].workstream=inp.value;saveWp();});
   wpv.querySelectorAll(".wp-deps").forEach(inp=>{
-    const commit=()=>{const i=+inp.dataset.i,t=items[i];if(!t)return;t.deps=wpParseDeps(inp.value,i);if(t.deps.length)t.start="";save();renderWorkplan();};
+    const commit=()=>{const i=+inp.dataset.i,t=items[i];if(!t)return;t.deps=wpParseDeps(inp.value,i);if(t.deps.length)t.start="";saveWp();renderWorkplan();};
     inp.onchange=commit;
     inp.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();commit();}};
   });
-  wpv.querySelectorAll(".wp-start").forEach(inp=>inp.onchange=()=>{items[+inp.dataset.i].start=inp.value;save();wpRepaint();});
-  wpv.querySelectorAll(".wp-unpin").forEach(b=>b.onclick=()=>{items[+b.dataset.i].start="";save();renderWorkplan();});
-  wpv.querySelectorAll(".wp-del").forEach(b=>b.onclick=()=>{const i=+b.dataset.i,id=items[i].id;items.splice(i,1);items.forEach(t=>t.deps=(t.deps||[]).filter(d=>d!==id));save();renderWorkplan();});
+  wpv.querySelectorAll(".wp-start").forEach(inp=>inp.onchange=()=>{items[+inp.dataset.i].start=inp.value;saveWp();wpRepaint();});
+  wpv.querySelectorAll(".wp-unpin").forEach(b=>b.onclick=()=>{items[+b.dataset.i].start="";saveWp();renderWorkplan();});
+  wpv.querySelectorAll(".wp-del").forEach(b=>b.onclick=()=>{const i=+b.dataset.i,id=items[i].id;items.splice(i,1);items.forEach(t=>t.deps=(t.deps||[]).filter(d=>d!==id));saveWp();renderWorkplan();});
   const ghost=wpv.querySelector(".wp-name-ghost");
   if(ghost)ghost.oninput=()=>{
     items.push({id:uid(),name:ghost.value,dur:2,station:"",project:"",workstream:"",deps:[],start:iso(startOfDay(new Date()))});
-    save();renderWorkplan();
+    saveWp();renderWorkplan();
     const inp=wpv.querySelector(`.wp-name[data-i="${items.length-1}"]`);
     if(inp){inp.focus();inp.setSelectionRange(inp.value.length,inp.value.length);}
   };
@@ -796,7 +813,7 @@ wpv.addEventListener("pointerup",e=>{
   const base=cs.baseById[t.id];
   if(base&&ns<=parse(base)){t.start="";if(iso(ns)!==base)toast("Snapped back — it can't start before its predecessors");}
   else t.start=iso(ns);
-  save();renderWorkplan();
+  saveWp();renderWorkplan();
 });
 wpv.addEventListener("pointercancel",()=>{if(wpDrag){wpDrag.el.classList.remove("dragging");wpDrag.el.style.transform="";wpDrag=null;}});
 
@@ -819,7 +836,8 @@ function swatchHTML(sel){return `<div class="swatches">`+PALETTE.map(p=>`<div cl
 function openRunModal(run,presetDate){
   const isNew=!run;
   if(!state.stations||state.stations.length===0){state.stations=structuredClone(DEFAULT_STATIONS);save();}
-  const r=run||{id:uid(),station:state.stations[0].id,title:"",start:presetDate||iso(anchor),end:endFromDuration(presetDate||iso(anchor),7),color:PALETTE[0].c,phase:"",notes:"",deps:[]};
+  const d0=presetDate||newItemDate();
+  const r=run||{id:uid(),station:state.stations[0].id,title:"",start:d0,end:endFromDuration(d0,7),color:PALETTE[0].c,phase:"",notes:"",deps:[]};
   const others=state.runs.filter(x=>x.id!==r.id);
   modal.innerHTML=`<h2>${isNew?"New run":"Edit run"}<button class="x" id="mx">×</button></h2>
     <div class="fld"><label>Run name</label><input id="f-title" dir="auto" value="${esc(r.title)}" placeholder="e.g. Strawberry batch 12 — DO cascade"></div>
@@ -851,7 +869,7 @@ function openRunModal(run,presetDate){
 }
 function openTaskModal(task,presetDate){
   const isNew=!task;
-  const t=task||{id:uid(),station:"",title:"",date:presetDate||iso(anchor),color:PALETTE[3].c,done:false,runId:null};
+  const t=task||{id:uid(),station:"",title:"",date:presetDate||newItemDate(),color:PALETTE[3].c,done:false,runId:null};
   modal.innerHTML=`<h2>${isNew?"New task":"Edit task"}<button class="x" id="mx">×</button></h2>
     <div class="fld"><label>Task</label><input id="t-title" dir="auto" value="${esc(t.title)}" placeholder="e.g. Calibrate pH probe"></div>
     <div class="fld row"><div><label>Station</label><select id="t-station"><option value=""${t.station?"":" selected"}>General (no station)</option>${state.stations.map(s=>`<option value="${s.id}"${s.id===t.station?" selected":""}>${s.name}</option>`).join("")}</select></div><div><label>Date</label><input type="date" id="t-date" value="${t.date}"></div></div>
@@ -1251,7 +1269,7 @@ function stepBack(){if(view==="week")anchor=addDays(anchor,-7);else if(monthSpan
 function stepFwd(){if(view==="week")anchor=addDays(anchor,7);else if(monthSpan>0)anchor=addDays(anchor,7*monthSpan);else anchor=new Date(anchor.getFullYear(),anchor.getMonth()+1,1);render();}
 document.getElementById("prev").onclick=stepBack;
 document.getElementById("next").onclick=stepFwd;
-document.getElementById("todayBtn").onclick=()=>{anchor=startOfDay(new Date());if(monthSpan===0)monthRolling=false;render();};
+document.getElementById("todayBtn").onclick=()=>{anchor=startOfDay(new Date());selDate=null;if(monthSpan===0)monthRolling=false;render();};
 document.getElementById("newRun").onclick=()=>openRunModal(null);
 document.getElementById("newTask").onclick=()=>openTaskModal(null);
 const taskToggle=document.getElementById("taskToggle");

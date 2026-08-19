@@ -18,7 +18,10 @@
       "Read(//c/Users/YoniLevinson/.claude/projects/c--Users-YoniLevinson-bioreactormodiin/**)",
       "Bash(mkdir -p \"c:/Users/YoniLevinson/.claude/plans\")",
       "Bash(python -m http.server 8000 --directory .)",
-      "Bash(curl -s http://127.0.0.1:8000)"
+      "Bash(curl -s http://127.0.0.1:8000)",
+      "Bash(sed -n '/^  \\\\.workplan{display:none/,/^  \\\\.wp-bar\\\\.conflict/p' index.html)",
+      "Bash(sed -n '/^\\\\/\\\\* ---------- Work plan: department-wide/,/^wpv.addEventListener\\(\"pointercancel\"/p' index.html)",
+      "Read(//tmp/**)"
     ],
     "additionalDirectories": [
       "c:\\Users\\YoniLevinson\\.claude"

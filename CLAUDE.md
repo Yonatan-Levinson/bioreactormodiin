@@ -13,8 +13,8 @@ one GitHub Pages site (https://yonatan-levinson.github.io/bioreactormodiin/):
 - `/biology/index.html` — flask experiments (no station/platform concept; "Run" is
   relabeled "Experiment" throughout)
 
-All five have a **Projects** tab — see "Domain model" below for why it's shared
-across every site rather than per-site data.
+All five have a **Projects** tab and a **Work plan** page — see "Domain model"
+below for why both are shared across every site rather than per-site data.
 
 Each is a fully standalone file — HTML, CSS, and JS all in one, no build step, no
 dependencies, no package.json. Pushing to `main` updates all of them within about
@@ -32,41 +32,59 @@ in a browser (or serve the directory with any static file server) and reload aft
 edits. Verify changes by exercising the UI manually — add/drag/resize a run, toggle
 tasks, switch views, and confirm cloud sync still round-trips (see below).
 
+For a fast regression check across all five files without clicking through each,
+a headless browser works well and catches the errors that matter most here (a
+mis-spliced port leaves a page blank). Copy the file to a temp path, inject
+`window.addEventListener("error", …)` writing into the DOM, override `let page=…`
+to reach the page under test, blank out `CLOUD_URL`/`PROJECTS_CLOUD_URL` to keep
+a live pull from overwriting seeded state, then `chrome --headless=new
+--dump-dom file:///…` and grep the result. Note the copies have **mixed CRLF/LF
+line endings**, so anchor any scripted edit with `\r?\n`, never a bare `\n`.
+
 ## Data & sync architecture
 
 All state for a given dashboard lives in one in-memory object, `state =
-{stations, runs, tasks, projects}`. Runs/tasks/stations are **per-site**;
-`projects` is **shared across all five sites** — this means each dashboard
-runs *two independent sync channels* against *two different Sheets*:
+{stations, runs, tasks, projects, workplan}`. Runs/tasks/stations are
+**per-site**; `projects` and `workplan` are **shared across all five sites** —
+this means each dashboard runs *two independent sync channels* against *two
+different Sheets*:
 
 - **Schedule channel** (`stations`/`runs`/`tasks`) — targets `CLOUD_URL`, which
   is each site's *own* Sheet. Starts blank on every site copy except Modi'in;
   connecting cloud sync (via "⋯ → Connect cloud sync…") is a one-time
   per-site, per-browser action documented in `README.md`. `cloudPull()` polls
   every 5s, comparing a JSON hash of `{stations,runs,tasks}`; `cloudPush()`
-  debounces (400ms) and POSTs `{stations,runs,tasks}` (no `projects`) on every
-  local schedule change.
-- **Projects channel** (`projects`) — targets `PROJECTS_CLOUD_URL`, a constant
-  hardcoded to **Modi'in's** Sheet URL in all five files (on the Modi'in file
-  itself, this is the same URL as `CLOUD_URL`, so no separate channel is
-  needed there — `cloudPull`/`cloudPush` already carry `projects` alongside
-  its own schedule). On the four site copies, `projectsPull()` polls
+  debounces (400ms) and POSTs `{stations,runs,tasks}` (no shared keys) on every
+  local schedule change. On the copies `cloudPull()` rebuilds `state` wholesale
+  from the response, so it explicitly carries `projects`/`workplan` over from
+  the old object — dropping them would blank the shared pages for 5s and throw.
+- **Shared channel** (`projects` + `workplan`) — targets `PROJECTS_CLOUD_URL`, a
+  constant hardcoded to **Modi'in's** Sheet URL in all five files (on the
+  Modi'in file itself, this is the same URL as `CLOUD_URL`, so no separate
+  channel is needed there — `cloudPull`/`cloudPush` already carry both keys
+  alongside its own schedule). On the four site copies, `projectsPull()` polls
   Modi'in's Sheet every 5s independent of whether the site's own `CLOUD_URL`
   is connected; `projectsPush()` (called via `saveProjects()`, not `save()`)
-  does a read-modify-write — GET the current remote blob, overwrite only
-  `projects`, POST the whole thing back — specifically so a project edit made
-  from Chemo can never clobber Modi'in's own `stations`/`runs`/`tasks` (the
-  Apps Script backend replaces the entire Sheet cell on every POST; see
-  `README.md`).
+  does a read-modify-write — GET the current remote blob, spread it, overwrite
+  only `projects` and `workplan`, POST the whole thing back — specifically so a
+  project or work-plan edit made from Chemo can never clobber Modi'in's own
+  `stations`/`runs`/`tasks` (the Apps Script backend replaces the entire Sheet
+  cell on every POST; see `README.md`).
+- **Mid-edit guard**: both pull paths bail out via `editingShared()` when focus
+  is inside `#wpview` or an open `.modal`. Applying a remote blob there would
+  rebuild the work-plan inputs under the user's cursor and shift the row indexes
+  an in-flight edit is written against. The early return deliberately leaves
+  `lastHash` untouched, so the next poll applies the update once focus leaves.
 - **Local cache**: `localStorage`, under a **site-specific key** (`KEY`/`URLKEY`,
   e.g. `novella_bioreactor_chemo_v1`/`novella_cloud_url_chemo`) — this matters
   because all dashboards share one GitHub Pages origin, so a generic key would
   collide across sites in the same browser. It's a cache, not a store.
 - **Rule**: any new feature that holds team-visible schedule data must round-trip
   through `save()`/`cloudPush()`/`cloudPull()`; anything belonging to the shared
-  Projects tab must go through `saveProjects()`/`projectsPush()`/`projectsPull()`
-  instead. Mixing the two channels risks the site's own schedule data leaking
-  into Modi'in's Sheet, or vice versa.
+  Projects tab or Work plan must go through
+  `saveProjects()`/`projectsPush()`/`projectsPull()` instead. Mixing the two
+  channels risks the site's own schedule data leaking into Modi'in's Sheet, or
+  vice versa.
 
 ## Domain model
 
@@ -78,7 +96,15 @@ runs *two independent sync channels* against *two different Sheets*:
   dependents forward whenever a predecessor's dates change.
 - **Tasks** (`state.tasks`): single-day items, optionally tied to a `station`
   (empty = "General" lane) and optionally to a `runId`. Independently toggleable
-  on/off the calendar via the Tasks button.
+  on/off the calendar via the Tasks button. A task carrying a `seriesStep` was
+  generated by Biology's weekly series and is owned by its experiment (see
+  below); a task without one was made by hand and is never rewritten.
+- **New-item date** (all 5 sites): clicking a day in the calendar sets `selDate`
+  (month cells and week-view day headers both; clicking the selected day again
+  clears it, as does the Today button). `newItemDate()` returns `selDate` or, if
+  nothing is selected, today — and it is what ＋ Run / ＋ Task default to. The
+  `presetDate` argument still wins where it is passed (double-clicking a month
+  cell), so that path is unchanged.
 - **Stations** (`state.stations`): user-managed list of platforms/lines. On
   Modi'in: Dasgip, MF1–3 (real names, user-editable via "Manage stations"). On
   Chemo/CPI/ECL: seeded with one placeholder ("Line 1") for the user to rename —
@@ -115,8 +141,8 @@ runs *two independent sync channels* against *two different Sheets*:
   `projectSpan()` (drives the card's timeline text) prefers, in order: the
   Work plan items linked to the project (`t.project === p.id`), then the
   project-modal schedule's computed span, then legacy workstream row dates.
-- **Work plan** (`state.workplan`, **Modi'in only so far — not yet ported to
-  the four copies**): a third top-level page (Schedule / Projects / Work plan)
+- **Work plan** (`state.workplan`, **shared across all 5 sites**, like Projects):
+  a third top-level page (Schedule / Projects / Work plan)
   — Yoni's department-wide, cross-project capacity planner at quarters-to-a-year
   zoom, for portfolio-length and resource-utilization conversations with
   leadership. MS-Project mental model, deliberately minimal columns.
@@ -131,11 +157,22 @@ runs *two independent sync channels* against *two different Sheets*:
   clears the override). `computeWorkplan()` mirrors `computeSchedule()` (Kahn +
   forward pass, derived dates never persisted) plus two extras: a global
   finish-to-start lag of `lagDays` on every dependency, and **soft** conflict
-  flags (never blocking) when two items on the same station overlap. Sync: on
-  Modi'in `workplan` rides the schedule channel (`save()`/`cloudPush()`/
-  `cloudPull()`/`dataHash()` all carry it); the four site copies'
-  `projectsPush()` spreads the fetched remote blob into its POST body so their
-  projects read-modify-write can't drop `workplan` from Modi'in's Sheet.
+  flags (never blocking) when two items on the same station overlap.
+
+  Sync: there is **one work plan**, living in Modi'in's Sheet, exactly like
+  Projects — not five per-site plans. On Modi'in `workplan` rides the schedule
+  channel (`save()`/`cloudPush()`/`cloudPull()`/`dataHash()` all carry it,
+  because that Sheet *is* the shared one); on the four copies it rides the
+  shared channel via `saveProjects()`/`projectsPush()`/`projectsPull()`. Every
+  mutation in the Work plan UI calls **`saveWp()`**, and that one-line function
+  is the only thing that differs between the five copies of the block —
+  `save()` on Modi'in, `saveProjects()` on the copies. Everything below it is
+  byte-identical in all five files, so the block ports verbatim; if you change
+  the Work plan, diff the region from `const wpv=` to the `pointercancel`
+  listener across the files afterwards to confirm it still is. Biology is the
+  one exception: it relabels the same shared rows as experiments (column
+  placeholder, ghost row, summary count, overlap warning) per the site-wide
+  Run→Experiment convention. Same data, different wording.
 
 ## Coach update (paste-to-apply)
 
@@ -208,6 +245,10 @@ add this to any new free-text field.
   that site — a change that makes his morning check slower or more confusing is
   a regression.
 - **Yoni** (Head of Bioprocess) plans run sequencing and owns this codebase.
+- **Dorin** works in flask experiments on the Biology site — she seeds cells
+  across media conditions on one weekday, passages on that weekday for the next
+  two weeks, and counts on the fourth. Her work is weekly touchpoints, not a
+  continuous run, which is what the weekly series exists for.
 - Modi'in runs map to named upstream projects: Baseline, DOE, Media, Supply,
   Wash, Incyte.
 
@@ -225,13 +266,15 @@ shared module. When making a cross-cutting change:
 1. Make and verify it on the Modi'in root `index.html` first.
 2. Port the same diff to `chemo/`, `cpi/`, `ecl/`, and (adapting for the
    Run→Experiment relabeling and missing station UI) `biology/`.
-3. If the change touches the Projects tab specifically, remember its sync
-   plumbing differs on the site copies (`PROJECTS_CLOUD_URL`/`saveProjects()`
-   instead of `CLOUD_URL`/`save()`) — see "Data & sync architecture" above.
-   The modal markup/rendering code itself (`openProjectModal`, `computeSchedule`,
-   `renderScheduleGantt`,
-   etc.) is identical across all 5 files and can be ported verbatim; only the
-   save/delete handlers' final call (`saveProjects()` vs `save()`) differs.
+3. If the change touches the Projects tab or the Work plan specifically,
+   remember their sync plumbing differs on the site copies
+   (`PROJECTS_CLOUD_URL`/`saveProjects()` instead of `CLOUD_URL`/`save()`) —
+   see "Data & sync architecture" above. The markup/rendering code itself
+   (`openProjectModal`, `computeSchedule`, `renderScheduleGantt`,
+   `renderWorkplan`, `computeWorkplan`, etc.) is identical across all 5 files
+   and can be ported verbatim; only the final save call differs — for Projects
+   the modal's save/delete handlers (`saveProjects()` vs `save()`), for the Work
+   plan the single `saveWp()` definition at the top of its block.
 
 Beware when porting mechanically: the **order of CSS rules inside `<style>`
 differs between Modi'in and the copies** (the copies' projects/exptable/gantt
@@ -247,6 +290,41 @@ runs/tasks default to that one id — so the calendar naturally renders as one
 ungrouped lane without touching `renderWeek()`/`renderMonth()`'s per-station
 loop structure. If Biology ever needs multiple real lanes, that assumption
 would need revisiting.
+
+### Biology: weekly series (Biology only)
+
+A flask experiment is not continuous work, so a solid bar is the wrong mental
+model for it. `r.series` is an array of `{id, name, week}` steps — defaulting to
+Seed/Passage/Passage/Count at weeks 0–3 — and every step falls on
+`start + 7×week`, so they all share the experiment's starting weekday. An
+experiment with a non-empty `series` is a "series experiment"; `isSeries(r)`
+gates everything.
+
+- **Generation.** `generateSeriesTasks(r)` writes one task per step with
+  `runId = r.id` and `seriesStep = step.id`. That step id is the whole safety
+  mechanism: regeneration finds and replaces only tasks carrying a
+  `seriesStep`, so it can never duplicate a step, a step that survived the edit
+  keeps its `done` state (and its task id), and a task **without** `seriesStep`
+  is hand-made and is never moved, rewritten, or deleted. Generated tasks are
+  ordinary tasks otherwise — individually tickable, so the completed-vs-
+  outstanding view keeps working.
+- **Staying in sync.** `syncSeriesTasks()` runs at the end of `cascade()` and
+  regenerates for every experiment that *already* has generated tasks — so a
+  dependency shift or a date edit re-dates them. It never generates on its own;
+  only the modal's Generate tasks button does that. Removing the series drops
+  its generated tasks and keeps the manual ones. Saving also stretches `end` to
+  cover the last step, so the calendar span matches the plan.
+- **Rendering.** A series experiment draws as a dashed spine with a `.pip` on
+  each touchpoint day (`.bar.series` / `.mbar.series`, colored through the
+  `--sc` custom property) instead of a solid bar, in both month and week views.
+  It has no grip or resize handles and its `drag` type is `"seriesclick"`, which
+  every branch of the pointerup handler ignores except the click-to-open one —
+  a series is rescheduled by its Start date in the modal, since there is no
+  continuous span to stretch. Non-series experiments are untouched by all of
+  this and still drag and resize normally.
+
+These tasks are per-site schedule data and correctly ride
+`save()`/`cloudPush()`/`cloudPull()`, **not** the shared projects channel.
 
 Each site has a violet site-switcher button at the top-left of the header
 (fixed position, right after the logo, so it doesn't shift around as other
