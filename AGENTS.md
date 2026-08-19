@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Codex (Codex.ai/code) when working with code in this repository.
 
 ## What this is
 
@@ -136,35 +136,6 @@ runs *two independent sync channels* against *two different Sheets*:
   `cloudPull()`/`dataHash()` all carry it); the four site copies'
   `projectsPush()` spreads the fetched remote blob into its POST body so their
   projects read-modify-write can't drop `workplan` from Modi'in's Sheet.
-
-## Coach update (paste-to-apply)
-
-`⋯ → 🧭 Apply Coach update…` (`openCoachModal`/`parseCoachPatch`) lets the Coach
-agent change the dashboard without write access to the Sheet: Coach emits a JSON
-patch, Yoni pastes it, previews a human-readable diff, and confirms. **Modi'in
-only so far — not yet ported to the four copies.**
-
-Patch keys (all optional): `coach`, `note`, `addTasks[]`, `addRuns[]`,
-`updateRuns[]`, `updateProjects[]`, `deleteProjects[]`. Stations and update
-targets are given by **name**, never by id, so a patch stays readable and
-survives id churn — `cpFind()` prefers an exact case-insensitive name match and
-falls back to substring, erroring on 0 or >1 hits rather than guessing.
-
-Design rules, in order of importance:
-
-- **`parseCoachPatch()` never mutates.** It returns `{ops, errs, warns}` where
-  each op carries a display `label` and a closure `run()`. Nothing is applied
-  until the user clicks Apply, and **any error blocks the entire patch** — there
-  are no partial applications.
-- **Runs and tasks can never be deleted this way**, only added or updated.
-  Project deletion is allowed (the ghost-duplicate cleanup case) but warns with
-  the experiment-row count that would be lost.
-- Unknown top-level keys are warned about and ignored, so a newer Coach talking
-  to an older dashboard degrades instead of failing.
-- Apply calls `save()`, plus `saveProjects()` **only if** the patch touched
-  projects and that function exists — written that way so the block ports
-  verbatim to the four site copies despite their different sync plumbing (see
-  "Data & sync architecture").
 
 ## Rendering
 

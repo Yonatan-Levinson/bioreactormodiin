@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "PowerShell(Start-Process \"c:\\\\Users\\\\YoniLevinson\\\\bioreactormodiin\\\\chemo\\\\index.html\")",
+      "PowerShell(Start-Process \"c:\\\\Users\\\\YoniLevinson\\\\bioreactormodiin\\\\biology\\\\index.html\")",
+      "PowerShell(Start-Process \"c:\\\\Users\\\\YoniLevinson\\\\bioreactormodiin\\\\cpi\\\\index.html\")",
+      "PowerShell(Start-Process \"c:\\\\Users\\\\YoniLevinson\\\\bioreactormodiin\\\\ecl\\\\index.html\")",
+      "Skill(fewer-permission-prompts)",
+      "Skill(fewer-permission-prompts:*)",
+      "Bash(ls -la \"/c/Users/YoniLevinson/.claude/projects/\" 2>&1 | head -50)",
+      "Read(//c/Users/YoniLevinson/.claude/projects//**)",
+      "Bash(ls -la \"/c/Users/YoniLevinson/.claude/projects/c--Users-YoniLevinson-bioreactormodiin/\" 2>&1 | grep jsonl)",
+      "Read(//c/Users/YoniLevinson/.claude/projects/c--Users-YoniLevinson-bioreactormodiin//**)",
+      "Bash(grep --version | head -1 *)",
+      "Read(//c/Users/YoniLevinson/.claude/projects/c--Users-YoniLevinson-bioreactormodiin/**)",
+      "Bash(mkdir -p \"c:/Users/YoniLevinson/.claude/plans\")",
+      "Bash(python -m http.server 8000 --directory .)",
+      "Bash(curl -s http://127.0.0.1:8000)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\YoniLevinson\\.claude"
+    ]
+  }
+}
