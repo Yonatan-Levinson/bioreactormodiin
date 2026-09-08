@@ -267,7 +267,11 @@
   .bar.series,.mbar.series{background:transparent!important;border:1.5px dashed var(--sc);color:var(--ink);box-shadow:none;cursor:pointer;}
   .bar.series .bar-day{background:var(--sc);color:#fff;}
   .pips{position:absolute;inset:0;pointer-events:none;}
-  .pip{position:absolute;top:50%;width:13px;height:13px;border-radius:50%;transform:translate(-50%,-50%);background:var(--sc);border:2px solid var(--panel);}
+  .touchpoint{position:absolute;top:5px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;z-index:3;}
+  .touchpoint .pip{position:static;width:13px;height:13px;border-radius:50%;background:var(--sc);border:2px solid var(--panel);flex:none;}
+  .touch-label{max-width:180px;margin-top:1px;padding:0 4px;border-radius:4px;background:rgba(255,255,255,.94);color:var(--ink-dim);font-size:11px;font-weight:500;line-height:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:auto;cursor:pointer;box-shadow:0 1px 2px rgba(40,48,33,.08);}
+  .touch-label:hover{color:var(--leaf-deep);background:var(--panel);}
+  .mbar.series{height:42px;overflow:visible;}
   .swatches{display:flex;gap:8px;flex-wrap:wrap;}
   .swatch{width:30px;height:30px;border-radius:7px;border:2px solid transparent;cursor:pointer;}
   .swatch.on{border-color:var(--ink);box-shadow:0 0 0 2px var(--panel) inset;}
@@ -540,8 +544,10 @@ function renderMonth(){
       let ticks="";
       if(ser){
         // Nothing happens between touchpoints, so mark the days themselves instead of counting days.
-        seriesDates(o.r).forEach(ds=>{const dt=parse(ds);if(dt<segS||dt>segE)return;
-          ticks+=`<span class="pip" style="left:${((dayDiff(segS,dt)+0.5)/span*100).toFixed(3)}%"></span>`;});
+        o.r.series.forEach(step=>{const dt=addDays(parse(o.r.start),step.week*7);if(dt<segS||dt>segE)return;
+          const task=state.tasks.find(t=>t.runId===o.r.id&&t.seriesStep===step.id);
+          const pct=((dayDiff(segS,dt)+0.5)/span*100).toFixed(3);
+          ticks+=`<span class="touchpoint" style="left:${pct}%"><span class="pip"></span>${task?`<span class="touch-label" data-task-id="${task.id}" title="${esc(task.title)}">${esc(task.title)}</span>`:""}</span>`;});
         ticks=`<span class="pips">${ticks}</span>`;
       }else for(let i=0;i<span;i++){
         const dnum=startDayNum+i;
@@ -554,7 +560,7 @@ function renderMonth(){
       bar.innerHTML=`<span class="mbar-title">${esc(o.r.title)}${o.r.link?' <span class="linkmark">↗</span>':""}</span>`+(o.r.phase?`<span class="ph">· ${esc(o.r.phase)}</span>`:"")+(ser?ticks:`<span class="mbar-ticks">${ticks}</span>`);
       bar.title=ser?`${o.r.title} — weekly series, ${o.r.series.length} touchpoint${o.r.series.length===1?"":"s"}`
                    :`${o.r.title} — day ${startDayNum}${segS.getTime()!==segE.getTime()?"–"+endDayNum:""} of ${lastDay}`;
-      bar.addEventListener("click",e=>{e.stopPropagation();openRunModal(o.r);});
+      bar.addEventListener("click",e=>{e.stopPropagation();const taskEl=e.target.closest(".touch-label");const task=taskEl&&state.tasks.find(t=>t.id===taskEl.dataset.taskId);if(task)openTaskModal(task);else openRunModal(o.r);});
       overlay.appendChild(bar);
     });
     const maxLane=laneRows.length;
@@ -562,7 +568,7 @@ function renderMonth(){
       week.forEach((d,di)=>{
         const cell=wk.children[di],body=cell.querySelector(".cbody");
         body.style.marginTop=(maxLane*LANE_H())+"px";
-        const dts=state.tasks.filter(t=>t.date===iso(d));
+        const dts=state.tasks.filter(t=>t.date===iso(d)&&!t.seriesStep);
         const shown=dts.slice(0,3);
         shown.forEach(t=>{const el=document.createElement("div");el.className="mtask"+(t.done?" done":"");
           el.innerHTML=`<span class="md" style="background:${t.color}"></span>`+(t.done?`<span class="mchk">✓</span>`:"")+`<span>${esc(t.title)}</span>`;
@@ -1408,7 +1414,7 @@ document.addEventListener("paste",e=>{
 
 function uid(){return "x"+Math.random().toString(36).slice(2,9);}
 function stationName(id){const s=state.stations.find(x=>x.id===id);return s?s.name:"";}
-function LANE_H(){return window.innerWidth<=720?30:35;}
+function LANE_H(){return window.innerWidth<=720?40:46;}
 function esc(s){return(s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
 const RT_ALLOWED={B:1,STRONG:1,I:1,EM:1,U:1,UL:1,OL:1,LI:1,BR:1,DIV:1};
 const RT_TAG_RE=/<\/?(b|strong|i|em|u|ul|ol|li|br|div)(\s[^>]*)?>/i;
