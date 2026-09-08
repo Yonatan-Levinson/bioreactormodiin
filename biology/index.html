@@ -220,12 +220,12 @@
   .cell.today .cnum{background:var(--leaf);color:#fff;border-radius:50%;width:23px;height:23px;display:flex;align-items:center;justify-content:center;font-size:13px;align-self:center;}
   .cell .cbody{flex:1;}
   .wkbars{position:absolute;inset:0;pointer-events:none;}
-  .mbar{position:absolute;height:32px;border-radius:5px;font-size:13.5px;font-weight:600;color:#fff;padding:3px 9px 0;display:flex;align-items:flex-start;gap:4px;overflow:hidden;white-space:nowrap;pointer-events:auto;cursor:pointer;box-shadow:var(--shadow);border:1px solid rgba(0,0,0,.06);}
+  .mbar{position:absolute;height:32px;border-radius:5px;font-size:13.5px;font-weight:600;color:var(--ink);padding:3px 9px 0;display:flex;align-items:flex-start;gap:4px;overflow:hidden;white-space:nowrap;pointer-events:auto;cursor:pointer;box-shadow:none;border:1px solid color-mix(in srgb,var(--run-color) 62%,var(--line));background:color-mix(in srgb,var(--run-color) 10%,var(--panel));}
   .mbar .ph{opacity:.88;font-weight:500;}
-  .mbar-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:16px;display:flex;align-items:center;gap:6px;min-width:0;}
+  .mbar-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:16px;display:flex;align-items:center;gap:6px;min-width:0;color:var(--run-color);}
   .stchip{flex:none;font-size:11px;font-weight:800;letter-spacing:.3px;background:rgba(0,0,0,.24);color:#fff;padding:1px 7px;border-radius:9px;line-height:1.4;}
   .mbar-ticks{position:absolute;left:0;right:0;bottom:2px;height:12px;pointer-events:none;}
-  .mtick{position:absolute;bottom:0;font-size:10.5px;font-weight:700;line-height:1;color:#fff;opacity:.92;letter-spacing:.2px;transform:translateX(-50%);text-align:center;text-shadow:0 1px 1px rgba(0,0,0,.25);}
+  .mtick{position:absolute;bottom:0;font-size:10.5px;font-weight:700;line-height:1;color:var(--run-color);opacity:.92;letter-spacing:.2px;transform:translateX(-50%);text-align:center;}
   .mbar.cont-l{border-top-left-radius:0;border-bottom-left-radius:0;}
   .mbar.cont-r{border-top-right-radius:0;border-bottom-right-radius:0;}
   .mtask{display:flex;align-items:center;justify-content:center;gap:5px;font-size:12px;color:var(--ink-dim);padding:2px 5px;border-radius:4px;margin-top:3px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -262,16 +262,17 @@
   .ser-del:hover{color:var(--berry);}
   .seractions{display:flex;gap:8px;flex-wrap:wrap;}
   .seractions .tool{padding:6px 11px;font-size:12px;}
-  /* A series experiment is only touched one day a week, so it is drawn as pips on those days
-     joined by a dashed spine -- never a solid bar, which would imply continuous work. */
-  .bar.series,.mbar.series{background:transparent!important;border:1.5px dashed var(--sc);color:var(--ink);box-shadow:none;cursor:pointer;}
+  /* The weekly view keeps the sparse-series treatment; month view uses the same
+     quiet band for every experiment and lets its touchpoint markers explain the work. */
+  .bar.series{background:transparent!important;border:1.5px dashed var(--sc);color:var(--ink);box-shadow:none;cursor:pointer;}
   .bar.series .bar-day{background:var(--sc);color:#fff;}
+  .bar.series .pip{position:absolute;top:50%;width:13px;height:13px;border-radius:50%;transform:translate(-50%,-50%);background:var(--sc);border:2px solid var(--panel);}
   .pips{position:absolute;inset:0;pointer-events:none;}
-  .touchpoint{position:absolute;top:5px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;z-index:3;}
-  .touchpoint .pip{position:static;width:13px;height:13px;border-radius:50%;background:var(--sc);border:2px solid var(--panel);flex:none;}
-  .touch-label{max-width:180px;margin-top:1px;padding:0 4px;border-radius:4px;background:rgba(255,255,255,.94);color:var(--ink-dim);font-size:11px;font-weight:500;line-height:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:auto;cursor:pointer;box-shadow:0 1px 2px rgba(40,48,33,.08);}
-  .touch-label:hover{color:var(--leaf-deep);background:var(--panel);}
-  .mbar.series{height:42px;overflow:visible;}
+  .touchpoint{position:absolute;top:17px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;z-index:3;}
+  .touchpoint .pip{position:static;width:12px;height:12px;border-radius:50%;background:var(--run-color);border:2px solid var(--panel);flex:none;}
+  .touch-label{max-width:90px;margin-top:1px;padding:0 4px;border-radius:4px;background:var(--panel);color:var(--run-color);font-size:10.5px;font-weight:700;line-height:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:auto;cursor:pointer;box-shadow:var(--shadow);}
+  .touch-label:hover{color:var(--ink);}
+  .mbar.series{height:46px;overflow:visible;}
   .swatches{display:flex;gap:8px;flex-wrap:wrap;}
   .swatch{width:30px;height:30px;border-radius:7px;border:2px solid transparent;cursor:pointer;}
   .swatch.on{border-color:var(--ink);box-shadow:0 0 0 2px var(--panel) inset;}
@@ -499,6 +500,11 @@ function projectsPush(){
 function saveProjects(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}flashSaved();projectsPush();}
 
 const mg=document.getElementById("monthgrid");
+function runDisplayColor(r){
+  if(r.color&&r.color.toLowerCase()!==PALETTE[0].c)return r.color;
+  const idx=Math.max(0,state.runs.findIndex(x=>x.id===r.id));
+  return PALETTE[idx%PALETTE.length].c;
+}
 function renderMonth(){
   const rows=monthMatrix(),todayIso=iso(new Date()),m=anchor.getMonth();
   mg.innerHTML="";
@@ -529,8 +535,9 @@ function renderMonth(){
       const bar=document.createElement("div");
       bar.className="mbar"+(o.s<wStart?" cont-l":"")+(o.e>wEnd?" cont-r":"");
       const ser=isSeries(o.r);
-      if(ser){bar.classList.add("series");bar.style.setProperty("--sc",o.r.color);}
-      else bar.style.background=o.r.color;
+      const runColor=runDisplayColor(o.r);
+      bar.style.setProperty("--run-color",runColor);
+      if(ser)bar.classList.add("series");
       bar.style.left=`calc(${col0}/7*100% + 3px)`;
       bar.style.width=`calc(${span}/7*100% - 6px)`;
       bar.style.top=(28+lane*LANE_H())+"px";
@@ -547,7 +554,8 @@ function renderMonth(){
         o.r.series.forEach(step=>{const dt=addDays(parse(o.r.start),step.week*7);if(dt<segS||dt>segE)return;
           const task=state.tasks.find(t=>t.runId===o.r.id&&t.seriesStep===step.id);
           const pct=((dayDiff(segS,dt)+0.5)/span*100).toFixed(3);
-          ticks+=`<span class="touchpoint" style="left:${pct}%"><span class="pip"></span>${task?`<span class="touch-label" data-task-id="${task.id}" title="${esc(task.title)}">${esc(task.title)}</span>`:""}</span>`;});
+          const fullTitle=task?task.title:`${step.name} — ${o.r.title}`;
+          ticks+=`<span class="touchpoint" style="left:${pct}%"><span class="pip"></span><span class="touch-label" data-task-id="${task?task.id:""}" title="${esc(fullTitle)}">${esc(step.name)}</span></span>`;});
         ticks=`<span class="pips">${ticks}</span>`;
       }else for(let i=0;i<span;i++){
         const dnum=startDayNum+i;
@@ -623,7 +631,8 @@ function renderWeek(){
       const ser=isSeries(r);
       const bar=document.createElement("div");bar.className="bar"+(ser?" series":"");bar.dataset.id=r.id;
       bar.style.left=(x+2)+"px";bar.style.width=(w-4)+"px";bar.style.top="10px";bar.style.height="28px";
-      if(ser)bar.style.setProperty("--sc",r.color);else bar.style.background=r.color;
+      const runColor=runDisplayColor(r);
+      if(ser)bar.style.setProperty("--sc",runColor);else bar.style.background=runColor;
       const totalDays=durOf(r);
       const lastDay=totalDays-1;
       const startDayNum=dayDiff(rs,cs), endDayNum=dayDiff(rs,ce);
@@ -1414,7 +1423,7 @@ document.addEventListener("paste",e=>{
 
 function uid(){return "x"+Math.random().toString(36).slice(2,9);}
 function stationName(id){const s=state.stations.find(x=>x.id===id);return s?s.name:"";}
-function LANE_H(){return window.innerWidth<=720?40:46;}
+function LANE_H(){return window.innerWidth<=720?44:50;}
 function esc(s){return(s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
 const RT_ALLOWED={B:1,STRONG:1,I:1,EM:1,U:1,UL:1,OL:1,LI:1,BR:1,DIV:1};
 const RT_TAG_RE=/<\/?(b|strong|i|em|u|ul|ol|li|br|div)(\s[^>]*)?>/i;
