@@ -355,7 +355,7 @@
 <div class="toast" id="toast"></div>
 <script>
 "use strict";
-let CLOUD_URL="";
+let CLOUD_URL="https://script.google.com/macros/s/AKfycbzSRTlA-Q49Pk33rskLShQY_BiLCt3UuSMxhjhXzeHl1n50o_ILQiCa1HDCJlujnOZm/exec";
 const PROJECTS_CLOUD_URL="https://script.google.com/macros/s/AKfycbyIiFWFH1xRF75XwCEwKRH2DJK1MUdkbt-qQfz93UzzV91KX1LsybQc15lxXIBTTjeqvg/exec";
 const PALETTE=[{name:"Leaf",c:"#5a9d2f"},{name:"Berry",c:"#d8483b"},{name:"Apricot",c:"#e0852b"},{name:"Sky",c:"#3a8fcc"},{name:"Violet",c:"#8a63c4"},{name:"Slate",c:"#6c7a82"}];
 const DEFAULT_STATIONS=[{id:"line1",name:"Line 1"}];
@@ -416,6 +416,23 @@ async function cloudPull(initial){if(!CLOUD_URL)return;try{const res=await fetch
 let pushTimer;
 function cloudPush(){clearTimeout(pushTimer);pushTimer=setTimeout(async()=>{try{const body=JSON.stringify({stations:state.stations,runs:state.runs,tasks:state.tasks});cloud.lastHash=JSON.stringify({s:state.stations,r:state.runs,t:state.tasks});await fetch(CLOUD_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body});}catch(e){const ss=document.getElementById("saveState");if(ss)ss.textContent="⚠ Couldn't sync — saved locally";}},400);}
 function updateCloudUI(){const note=document.getElementById("cloudNote"),btn=document.getElementById("connectCloud");if(cloud.on){note.innerHTML="<b>Cloud sync is ON.</b> Everyone on the shared link sees changes live.";btn.textContent="⛅ Cloud settings…";const ss=document.getElementById("saveState");if(ss)ss.textContent="☁ Live — shared with team";}else{note.innerHTML="<b>Storage:</b> this device only. Connect a Google Sheet to share live.";btn.textContent="⛅ Connect cloud sync…";}}
+function scheduleSnapshot(data=state){return {stations:(data.stations&&data.stations.length)?data.stations:structuredClone(DEFAULT_STATIONS),runs:data.runs||[],tasks:data.tasks||[]};}
+function scheduleHasContent(data){const s=scheduleSnapshot(data);return s.runs.length>0||s.tasks.length>0||JSON.stringify(s.stations)!==JSON.stringify(DEFAULT_STATIONS);}
+async function connectCloudSafely(url){
+  const local=scheduleSnapshot();
+  const res=await fetch(url+"?action=get&t="+Date.now());
+  if(!res.ok)throw new Error("Cloud returned "+res.status);
+  const raw=await res.json();
+  if(!raw||!Array.isArray(raw.runs))throw new Error("That URL is not a schedule endpoint");
+  const remote=scheduleSnapshot(raw);
+  const differs=JSON.stringify(local)!==JSON.stringify(remote);
+  let uploadLocal=scheduleHasContent(local)&&!scheduleHasContent(remote);
+  if(differs&&scheduleHasContent(local)&&scheduleHasContent(remote)){
+    uploadLocal=!confirm("This cloud Sheet already contains a different schedule.\n\nOK — use the cloud schedule\nCancel — upload this device's schedule");
+  }
+  if(uploadLocal){const pushed=await fetch(url,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(local)});if(!pushed.ok)throw new Error("Cloud upload failed");}
+  CLOUD_URL=url;localStorage.setItem(URLKEY,url);cloud.on=true;cloud.lastHash="";updateCloudUI();await cloudPull(true);cloud.polling=setInterval(()=>cloudPull(false),5000);
+}
 
 // Projects AND the work plan are department-wide: one shared copy living in Modi'in's Sheet,
 // reached through this channel and never through this site's own CLOUD_URL. Keeping them off
@@ -1168,7 +1185,7 @@ function openCloudModal(){
   scrim.classList.add("open");
   modal.querySelector("#mx").onclick=closeModal;
   modal.querySelector("#cl-guide").onclick=()=>toast("Setup guide came with the dashboard (README)");
-  modal.querySelector("#cl-save").onclick=async()=>{const url=modal.querySelector("#cloud-url").value.trim();CLOUD_URL=url;if(url)localStorage.setItem(URLKEY,url);else localStorage.removeItem(URLKEY);if(cloud.polling)clearInterval(cloud.polling);cloud.on=false;cloud.lastHash="";closeModal();if(url){toast("Connecting…");await cloudInit();cloudPush();toast("Cloud sync on");}else{updateCloudUI();toast("Cloud sync off");}};
+  modal.querySelector("#cl-save").onclick=async()=>{const url=modal.querySelector("#cloud-url").value.trim();if(cloud.polling)clearInterval(cloud.polling);cloud.polling=null;cloud.on=false;cloud.lastHash="";closeModal();if(!url){CLOUD_URL="";localStorage.removeItem(URLKEY);updateCloudUI();toast("Cloud sync off");return;}toast("Connecting…");try{await connectCloudSafely(url);toast("Cloud sync on");}catch(e){updateCloudUI();toast("Couldn't connect — local data is unchanged");}};
 }
 
 function syncViewButtons(){document.querySelectorAll("#viewSeg button").forEach(b=>b.classList.toggle("on",b.dataset.view===view));document.getElementById("spanSeg").classList.toggle("hide",view!=="month");}
