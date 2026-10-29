@@ -20,7 +20,8 @@ button{font-family:inherit}
 <script>
 /* ================= DATA — edit here ================= */
 const START = '2026-10-25';   // first Sunday shown
-const NWEEKS = 4;             // Sun–Thu weeks shown
+const END = '2027-03-31';     // last day shown (calendar + timeline)
+const NWEEKS = Math.floor((Date.parse(END) - Date.parse(START)) / (7 * 864e5)) + 1;
 
 const THEMES = [
   [1, '1 · Keep the line alive'],
@@ -97,11 +98,18 @@ const B = [
   b('or',   '2026-11-02', 0, 2, 'chemo', 'Bubble reactor (10–20 L carboy): design', { prop: 1 }),
   b('or',   '2026-11-04', 0, 1, 'drying-dsp', 'Dry freezer samples', { prop: 1 }),
 
+  // ---- Cryo (Dorin's plan, 29 Oct) ----
+  b('dorin','2026-11-01', 1, 1, 'cell-line', 'Cryo: set aside ~10 g (2nd-smallest line) at 4 °C', { prop: 1 }),
+  b('dorin','2026-11-04', 0, 1, 'cell-line', 'Cryo: reculture the 4 °C cells'),
+  b('dorin','2026-11-08', 1, 1, 'cell-line', 'Cryo day 0: TTC, 2 bead lots → 8 sucrose lots'),
+  b('dorin','2026-11-09', 0, 1, 'cell-line', 'Cryo day 1: pre-conditioning (sucrose steps)'),
+  b('dorin','2026-11-10', 0, 1, 'cell-line', 'Cryo day 2: pre-conditioning (sucrose steps)'),
+  b('dorin','2026-11-11', 0, 2, 'cell-line', 'Cryo day 3: dry all lots in hood + TTC'),
+  b('dorin','2026-11-12', 1, 1, 'cell-line', 'Cryo (optional): dissolve dried beads in Ca-free media → viability', { prop: 1 }),
+
   // ---- Week of 8 Nov ----
   b('dorin','2026-11-08', 0, 1, 'cell-line', 'Hand ~30–39 g to Nadav for new bank'),
-  b('dorin','2026-11-08', 1, 1, 'cell-line', 'Cryo pilot: drying curve in hood (day −8)', { prop: 1 }),
-  b('dorin','2026-11-09', 0, 1, 'cell-line', 'Plate→liquid line: weekly 2 flasks'),
-  b('dorin','2026-11-12', 0, 1, 'cell-line', 'Cryo: subculture for ~12 ml packed cells (day −4)', { prop: 1 }),
+  b('dorin','2026-11-09', 1, 1, 'cell-line', 'Plate→liquid line: weekly 2 flasks', { prop: 1 }),
 
   b('nadav','2026-11-08', 0, 1, 'cell-line', 'Receive cells from Dorin → start own bank'),
   b('nadav','2026-11-09', 0, 1, 'contamination', 'Blind media hold: set up (no cells)', { prop: 1 }),
@@ -117,12 +125,7 @@ const B = [
 
   // ---- Week of 15 Nov ----
   b('dorin','2026-11-15', 0, 1, 'cell-line', 'Plate→liquid line: weekly 2 flasks'),
-  b('dorin','2026-11-15', 1, 1, 'cell-line', 'Cryo prep: alginate, CaCl₂, sucrose media, ST24 plates (day −1)', { prop: 1 }),
-  b('dorin','2026-11-16', 0, 2, 'cell-line', 'Cryo day 0: TTC, 2 bead lots → 8 sucrose lots', { prop: 1 }),
-  b('dorin','2026-11-17', 0, 1, 'cell-line', 'Cryo day 1: sucrose steps', { prop: 1 }),
-  b('dorin','2026-11-18', 0, 1, 'cell-line', 'Cryo day 2: sucrose steps', { prop: 1 }),
   b('dorin','2026-11-18', 1, 1, 'media-v1', 'Filter vs autoclave end: count + data', { prop: 1 }),
-  b('dorin','2026-11-19', 0, 2, 'cell-line', 'Cryo day 3: dry all lots in hood + TTC', { prop: 1 }),
 
   b('nadav','2026-11-15', 0, 1, 'cell-line', 'Bank expansion (target ~50 g to seed)', { prop: 1 }),
   b('nadav','2026-11-17', 0, 1, 'contamination', 'Blind media hold: read out', { prop: 1 }),
@@ -148,7 +151,8 @@ const PB = [
   pb('Flasks', '2026-10-25', 0, 18, 'media-v1', '50/50 spent media → 3 Nov', { prop: 1 }),
   pb('Flasks', '2026-10-25', 0, 38, 'media-v1', 'Filter vs autoclave → 18 Nov', { prop: 1 }),
   pb('Flasks', '2026-11-01', 0, 30, 'cell-line', 'New line: 2 flasks / week'),
-  pb('Flasks', '2026-11-16', 0, 8, 'cell-line', 'Cryo: 8 sucrose lots', { prop: 1 }),
+  pb('Flasks', '2026-11-04', 0, 6, 'cell-line', 'Cryo: recultured cells (4 °C → Wed)'),
+  pb('Flasks', '2026-11-08', 1, 7, 'cell-line', 'Cryo: 8 sucrose lots'),
   pb('MF (TBD)', '2026-11-09', 0, 14, 'contamination', 'Blind media hold', { prop: 1 })
 ];
 
@@ -170,6 +174,70 @@ const Q = [
   ['gras', 'GRAS dossier', 'Shimrit runs it; reagent to Technion for HPLC. Check in with her later.', 'Shimrit', 'Shimrit'],
   ['cell-line', 'Low priority: metabolomics samples (Shimrit), Microsynth DNA question', 'Only if cheap and no team time', 'no date', 'no date']
 ];
+
+
+// ---- Project timeline (Gantt) ----
+// ph(name, start, end, opts) = phase bar; ms(name, date, opts) = milestone
+// opts: {prop:1} proposed (dashed), {note:'...'} warning under the name
+const ph = (name, s, e, o) => Object.assign({ kind: 'ph', name, s, e }, o || {});
+const ms = (name, s, o) => Object.assign({ kind: 'ms', name, s, e: s }, o || {});
+const TL = {
+  'cell-line': [
+    ms('Nadav’s bank: go / no-go', '2026-10-29'),
+    ph('Dorin expands best sub-line', '2026-11-01', '2026-11-08'),
+    ph('Sub-line analysis (Yoni)', '2026-11-03', '2026-11-05', { prop: 1 }),
+    ms('Hand-off ~30–39 g to Nadav', '2026-11-08'),
+    ph('Nadav builds own bank → ~50 g to seed', '2026-11-08', '2026-11-22', { prop: 1 }),
+    ph('Cryo: reculture → beads → pre-cond → dry (Dorin)', '2026-11-04', '2026-11-12', { note: 'Drying-curve pilot not in Dorin’s plan — confirm' }),
+    ms('Cryo: all lots dried', '2026-11-11'),
+    ms('Gate: setup cleared (media hold passes)', '2026-11-19', { prop: 1 }),
+    ph('New line in bioreactor = clean semi run', '2026-11-23', '2026-12-10', { prop: 1, note: 'Runs into Nadav’s December absence — needs cover, or slips to January' }),
+    ph('Plate→liquid line: 2 flasks/wk for 6–8 wks', '2026-11-01', '2026-12-20'),
+    ms('Decide: is the new line good?', '2026-12-20', { prop: 1 })
+  ],
+  'bpd-baseline': [
+    ph('DG5 run (if seeded)', '2026-10-29', '2026-11-12', { prop: 1, note: 'Length not confirmed' }),
+    ms('Pass criteria defined (Nadav)', '2026-11-01', { prop: 1 }),
+    ms('Goal 1 closed: cell-density report', '2026-11-03', { prop: 1 }),
+    ph('Clean semi-continuous run (new line)', '2026-11-23', '2026-12-10', { prop: 1, note: 'Same run as the cell-line test' }),
+    ms('Decide: semi baseline or perfusion fallback', '2026-12-14', { prop: 1 })
+  ],
+  'contamination': [
+    ph('Hands-on clean → cleaning SOP', '2026-11-01', '2026-11-01', { prop: 1 }),
+    ph('Autoclave indicators: all load types', '2026-11-02', '2026-11-04', { prop: 1 }),
+    ph('5S: reference area → others → sign-off', '2026-11-08', '2026-11-16', { prop: 1 }),
+    ph('Contamination plan', '2026-11-09', '2026-11-10', { prop: 1 }),
+    ph('Blind media hold', '2026-11-09', '2026-11-17', { prop: 1 }),
+    ph('Room renovation window', '2026-12-01', '2026-12-31', { prop: 1, note: 'Dates TBD — Shimrit ↔ Einat' })
+  ],
+  'analytical': [
+    ph('PSD rig: camera, light box, background', '2026-11-05', '2026-11-05', { prop: 1 }),
+    ph('PSD: camera method vs Mastersizer', '2026-11-10', '2026-11-11', { prop: 1 }),
+    ph('TTC quantification method', '2026-11-17', '2026-11-18', { prop: 1 })
+  ],
+  'chemo': [
+    ph('TPC on Chemo batches (Dorin)', '2026-11-02', '2026-11-05', { prop: 1 }),
+    ph('Bubble reactor: design + build plan (Or)', '2026-11-02', '2026-11-10', { prop: 1 })
+  ],
+  'drying-dsp': [
+    ms('Ask ECL: biomass amount + thickness', '2026-11-01', { prop: 1 }),
+    ph('Dry freezer samples (ongoing)', '2026-11-01', '2026-12-31'),
+    ph('Validate ECL freeze conditions', '2026-11-16', '2026-11-16', { prop: 1, note: 'Waits on ECL’s answer' })
+  ],
+  'media-v1': [
+    ms('50/50 experiment ends', '2026-11-03', { prop: 1 }),
+    ms('Filter vs autoclave ends', '2026-11-18', { prop: 1 })
+  ],
+  'functionality': [
+    ms('In vitro digestion done (Dorin)', '2026-10-25'),
+    ph('Non-viability study (Or)', '2026-11-08', '2026-11-12', { prop: 1 })
+  ],
+  'team': [
+    ph('Technician: hire', '2026-11-01', '2026-11-30', { prop: 1 }),
+    ph('Technician onboarding (~2 wks)', '2026-12-01', '2026-12-14', { prop: 1 }),
+    ph('Nadav away', '2026-12-01', '2026-12-31', { prop: 1, note: 'Exact dates TBD' })
+  ]
+};
 
 /* ================= ENGINE ================= */
 const DAYN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu'];
@@ -206,10 +274,62 @@ function pack(list) {
   return rows.length;
 }
 
+
+function renderTimeline(sel) {
+  const t0 = Date.parse(START + 'T00:00:00'), t1 = Date.parse(END + 'T00:00:00') + 864e5, span = t1 - t0;
+  const pct = (iso, endOfDay) => ((Date.parse(iso + 'T00:00:00') + (endOfDay ? 864e5 : 0) - t0) / span * 100);
+  const LBL = 300;
+  let h = '<section style="background:#FFFFFF;border:1px solid #E1E2DC;border-radius:12px;overflow-x:auto"><div style="min-width:1100px;padding:10px 12px 14px">';
+  // month header
+  h += '<div style="display:grid;grid-template-columns:' + LBL + 'px 1fr;align-items:end"><div></div><div style="position:relative;height:26px;border-bottom:1px solid #E1E2DC">';
+  const d = new Date(START + 'T12:00:00'); d.setDate(1);
+  while (d.getTime() < t1) {
+    const iso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-01';
+    const left = Math.max(0, pct(iso));
+    const nx = new Date(d); nx.setMonth(nx.getMonth() + 1);
+    const visDays = (Math.min(nx.getTime(), t1) - Math.max(d.getTime(), t0)) / 864e5;
+    const lbl = visDays < 12 ? '' : MON[d.getMonth()] + (d.getMonth() === 0 || !h.includes('data-firstm') ? ' ' + d.getFullYear() : '');
+    h += '<div data-firstm style="position:absolute;left:' + left + '%;top:0;bottom:0;border-left:1px solid #D5D6D0;padding-left:6px;font-weight:700;font-size:12.5px;white-space:nowrap">' + lbl + '</div>';
+    d.setMonth(d.getMonth() + 1);
+  }
+  h += '</div></div>';
+  const tp = (todayIso >= START && todayIso <= END) ? pct(todayIso) + (100 / (span / 864e5)) / 2 : null;
+  const keys = Object.keys(P).filter((k) => !sel || k === sel);
+  THEMES.forEach(([n, label]) => {
+    const ks = keys.filter((k) => P[k].theme === n);
+    if (!ks.length) return;
+    if (!sel) h += '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:#5F6368;margin:14px 0 2px">' + esc(label) + '</div>';
+    ks.forEach((k) => {
+      const c = P[k].c, rows = (TL[k] || []).slice().sort((a, b2) => a.s < b2.s ? -1 : a.s > b2.s ? 1 : 0);
+      h += '<div style="display:grid;grid-template-columns:' + LBL + 'px 1fr;border-top:1px solid #EEEEEA;margin-top:4px"><div style="display:flex;align-items:center;gap:8px;padding:8px 0 4px"><span style="width:12px;height:12px;border-radius:3px;background:' + c + ';flex:none"></span><span style="font-weight:700;font-size:13px">' + esc(P[k].name) + '</span></div><div></div></div>';
+      if (!rows.length) {
+        h += '<div style="display:grid;grid-template-columns:' + LBL + 'px 1fr"><div style="padding:2px 0 8px 20px;font-size:11.5px;color:#6B7075">No plan yet</div><div></div></div>';
+        return;
+      }
+      rows.forEach((r) => {
+        h += '<div style="display:grid;grid-template-columns:' + LBL + 'px 1fr;align-items:center;min-height:30px">';
+        h += '<div style="padding:3px 12px 3px 20px;font-size:12px;line-height:1.35"><span' + (r.prop ? ' style="color:#3F444A"' : ' style="font-weight:600"') + '>' + esc(r.name) + '</span>' + (r.note ? '<div style="font-size:11px;color:#9B1C1C;margin-top:1px">' + esc(r.note) + '</div>' : '') + '</div>';
+        h += '<div style="position:relative;height:100%;min-height:30px">';
+        if (tp !== null) h += '<div style="position:absolute;left:' + tp + '%;top:0;bottom:0;border-left:2px solid #E0A526;z-index:0"></div>';
+        if (r.kind === 'ms') {
+          h += '<div title="' + esc(r.name + ' — ' + r.s + (r.prop ? ' (proposed)' : '')) + '" style="position:absolute;left:calc(' + (pct(r.s) + (100 / (span / 864e5)) / 2) + '% - 8px);top:50%;width:14px;height:14px;margin-top:-7px;transform:rotate(45deg);background:' + (r.prop ? '#FFFFFF' : c) + ';border:2px ' + (r.prop ? 'dashed' : 'solid') + ' ' + c + ';box-sizing:border-box;z-index:1"></div>';
+        } else {
+          const l = pct(r.s), w = Math.max(pct(r.e, 1) - l, 0.6);
+          h += '<div title="' + esc(r.name + ' — ' + r.s + ' → ' + r.e + (r.prop ? ' (proposed)' : '')) + '" style="position:absolute;left:' + l + '%;width:' + w + '%;top:7px;bottom:7px;border-radius:5px;background:' + c + ';z-index:1;' + (r.prop ? 'outline:2px dashed rgba(255,255,255,.85);outline-offset:-4px;' : '') + '"></div>';
+        }
+        h += '</div></div>';
+      });
+    });
+  });
+  h += '<div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:14px;font-size:11.5px;color:#4A4F55"><span><span style="display:inline-block;width:2px;height:12px;background:#E0A526;vertical-align:middle;margin-right:6px"></span>today</span><span><span style="display:inline-block;width:10px;height:10px;transform:rotate(45deg);border:2px solid #1B1D1F;margin-right:8px;vertical-align:middle"></span>milestone (hollow = proposed)</span></div>';
+  h += '</div></section>';
+  return h;
+}
+
 function render() {
   H.length = 0;
   const sel = state.sel || null, tech = !!state.tech, who = state.who || null;
-  const platOn = !!state.plat, routineOn = !!state.routine, loadOn = !!state.load;
+  const platOn = !!state.plat, routineOn = !!state.routine, loadOn = !!state.load, tlv = state.view === 'tl';
 
   let blocks = B.filter((x) => (x.lane === 'tech' ? tech : !(tech && x.tt)));
   if (who) blocks = blocks.filter((x) => x.lane === who);
@@ -225,14 +345,21 @@ function render() {
   h += '<h1 style="margin:4px 0 0;font-size:26px;font-weight:700;letter-spacing:-.01em">Who is doing what, when</h1></div>';
   h += '<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">';
   h += '<div style="display:flex;border:1px solid #C9CBC4;border-radius:8px;overflow:hidden;background:#FFFFFF">';
+  h += '<button onclick="' + on(() => setState({ view: 'cal' })) + '" style="' + seg(!tlv, true) + '">Calendar</button>';
+  h += '<button onclick="' + on(() => setState({ view: 'tl' })) + '" style="' + seg(tlv, false) + '">Timeline</button></div>';
+  if (!tlv) {
+  h += '<button onclick="' + on(() => { const el = document.getElementById('wk' + Math.max(0, Math.floor(TODAY / 5))); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }) + '" style="' + chip(false) + '">Today</button>';
+  h += '<div style="display:flex;border:1px solid #C9CBC4;border-radius:8px;overflow:hidden;background:#FFFFFF">';
   h += '<button onclick="' + on(() => setState({ tech: false })) + '" style="' + seg(!tech, true) + '">Current team</button>';
   h += '<button onclick="' + on(() => setState({ tech: true })) + '" style="' + seg(tech, false) + '">+ Technician</button></div>';
   h += '<button onclick="' + on(() => setState({ plat: !platOn })) + '" aria-pressed="' + platOn + '" style="' + chip(platOn) + '">Platforms</button>';
   h += '<button onclick="' + on(() => setState({ routine: !routineOn })) + '" aria-pressed="' + routineOn + '" style="' + chip(routineOn) + '">Routine</button>';
   h += '<button onclick="' + on(() => setState({ load: !loadOn })) + '" aria-pressed="' + loadOn + '" style="' + chip(loadOn) + '">Load</button>';
+  }
   h += '</div></header>';
 
   // person filter row
+  if (!tlv) {
   h += '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px">';
   h += '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#5F6368;margin-right:4px">Show</span>';
   h += '<button onclick="' + on(() => setState({ who: null })) + '" aria-pressed="' + !who + '" style="' + chip(!who) + '">Everyone</button>';
@@ -242,6 +369,7 @@ function render() {
   });
   h += '<span style="margin-left:auto;display:inline-flex;align-items:center;gap:8px;font-size:12px;color:#4A4F55"><span style="display:inline-block;width:34px;height:18px;border-radius:5px;background:#5F6368;outline:2px dashed rgba(255,255,255,.85);outline-offset:-4px"></span>dashed = proposed, not yet confirmed</span>';
   h += '</div>';
+  } else h += '<div style="margin-bottom:16px;font-size:12.5px;color:#4A4F55">Project phases and milestones. Pick a project on the left to see just its plan; dashed = proposed.</div>';
 
   // layout
   h += '<div style="display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start">';
@@ -257,7 +385,8 @@ function render() {
   });
   h += '</aside><main style="flex:999 1 640px;min-width:0;display:flex;flex-direction:column;gap:16px">';
 
-  for (let w = 0; w < NWEEKS; w++) {
+  if (tlv) h += renderTimeline(sel);
+  else for (let w = 0; w < NWEEKS; w++) {
     const lo = w * 10, hi = lo + 10;
     const items = [];
     blocks.forEach((x) => {
@@ -266,9 +395,9 @@ function render() {
     });
     items.sort((p, q) => p.a - q.a || q.len - p.len);
     if (routineOn) for (let d = 0; d < 5; d++) ['nadav', 'dorin'].filter((k) => !who || who === k).forEach((k) => items.push({ kind: 'r', k, a: d * 2, len: 2 }));
-    const nRows = Math.max(3, pack(items));
+    const nRows = Math.max(1, pack(items));
 
-    h += '<section style="background:#FFFFFF;border:1px solid #E1E2DC;border-radius:12px;overflow-x:auto"><div style="min-width:1000px;padding:10px 12px 12px">';
+    h += '<section id="wk' + w + '" style="scroll-margin-top:12px;background:#FFFFFF;border:1px solid #E1E2DC;border-radius:12px;overflow-x:auto"><div style="min-width:1000px;padding:10px 12px 12px">';
     h += '<div style="display:grid;grid-template-columns:repeat(10,minmax(0,1fr));grid-template-rows:auto auto">';
     for (let i = 0; i < 5; i++) {
       const di = w * 5 + i, dd = DAYS[di], isT = di === TODAY;
