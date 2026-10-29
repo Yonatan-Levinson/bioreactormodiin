@@ -8,329 +8,328 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
 <style>
 body{margin:0;background:#F4F4F1}
-a{color:#1F5FAF}a:hover{color:#123E75}
 button{font-family:inherit}
+.blk{margin:2px;padding:5px 7px;border-radius:6px;display:flex;align-items:flex-start;gap:7px;min-width:0;box-sizing:border-box;color:#FFFFFF;font-size:11.5px;font-weight:500;line-height:1.3;position:relative;z-index:1}
+.blk .tx{min-width:0;overflow-wrap:anywhere;white-space:normal}
+.blk.prop{outline:2px dashed rgba(255,255,255,.85);outline-offset:-4px}
+.dot{width:20px;height:20px;border-radius:50%;border:1.5px solid #FFFFFF;box-sizing:border-box;color:#FFFFFF;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none;margin-top:1px}
 </style>
 </head>
 <body>
 <div id="app"></div>
 <script>
+/* ================= DATA — edit here ================= */
+const START = '2026-10-25';   // first Sunday shown
+const NWEEKS = 4;             // Sun–Thu weeks shown
+
+const THEMES = [
+  [1, '1 · Keep the line alive'],
+  [2, '2 · Make it work at home'],
+  [3, '3 · Support strawberry product (production & marketing)'],
+  [4, '4 · Innovate & improve'],
+  [5, 'Team']
+];
+const P = {
+  'cell-supply':   { name: 'Cell supply', theme: 1, c: '#1F7A5A' },
+  'cell-line':     { name: 'Cell line — investigate, rebuild, back up', theme: 1, c: '#0E5E6F' },
+  'bpd-baseline':  { name: 'BPD — clean baseline', theme: 2, c: '#1F5FAF' },
+  'contamination': { name: 'Contamination & 5S', theme: 2, c: '#3D4FA8' },
+  'analytical':    { name: 'Analytical methods (PSD, TTC, FDA)', theme: 2, c: '#23699A' },
+  'media-v1':      { name: 'Media V1', theme: 3, c: '#A0561A' },
+  'gras':          { name: 'GRAS dossier', theme: 3, c: '#7C3F12' },
+  'drying-dsp':    { name: 'Drying & DSP', theme: 3, c: '#8C6200' },
+  'chemo':         { name: 'Chemo support', theme: 3, c: '#C2410C' },
+  'functionality': { name: 'Functionality', theme: 3, c: '#9F1239' },
+  'proc-val':      { name: 'Process validation', theme: 3, c: '#5E6B1F' },
+  'bpd-opt':       { name: 'BPD — optimization (DOE)', theme: 4, c: '#6B4FA0' },
+  'media-v2':      { name: 'Media V2 (hormones, metals)', theme: 4, c: '#8E3F8E' },
+  'antifoam':      { name: 'Antifoam', theme: 4, c: '#A23B72' },
+  'new-lines':     { name: 'New lines (tomato, citrus)', theme: 4, c: '#5B3D7A' },
+  'team':          { name: 'Team & hiring', theme: 5, c: '#4A5568' }
+};
+const PEOPLE = {
+  yoni:  { name: 'Yoni',  c: '#2B6CB0', routine: 0, cap: 5 },
+  nadav: { name: 'Nadav', c: '#B7410E', routine: 1, cap: 5, routineText: 'daily sampling & checks' },
+  dorin: { name: 'Dorin', c: '#2F855A', routine: 1, cap: 5, routineText: 'media prep, housekeeping' },
+  or:    { name: 'Or',    c: '#6B46C1', routine: 0, cap: null },
+  tech:  { name: 'Technician', c: '#4A5568', routine: 0, cap: 5 }
+};
+
+// b(lane, date, half 0=AM 1=PM, length in half-days, project, text, opts)
+// opts: {prop:1} = proposed (dashed), {tt:1} = moves to technician in "+ Technician" view
+const b = (lane, date, h, len, p, t, o) => Object.assign({ lane, date, h, len, p, t }, o || {});
+const B = [
+  // ---- Week of 25 Oct ----
+  b('yoni', '2026-10-28', 1, 1, 'cell-line', '"What changed" meeting w/ Shimrit → workplan'),
+  b('nadav','2026-10-28', 1, 1, 'cell-line', '"What changed" meeting w/ Shimrit'),
+  b('dorin','2026-10-28', 1, 1, 'cell-line', '"What changed" meeting w/ Shimrit'),
+  b('or',   '2026-10-28', 1, 1, 'cell-line', '"What changed" meeting w/ Shimrit'),
+  b('nadav','2026-10-28', 0, 1, 'bpd-baseline', 'STR16 stopped — contaminated'),
+  b('nadav','2026-10-29', 0, 1, 'cell-line', 'Count bank + TTC with Or → go / no-go'),
+  b('or',   '2026-10-29', 0, 1, 'cell-line', 'Count Nadav’s bank + TTC with Nadav'),
+  b('nadav','2026-10-29', 1, 1, 'bpd-baseline', 'Seed DG5 (if bank OK)'),
+  b('yoni', '2026-10-29', 1, 1, 'analytical', 'PSD: quick scanner test (if time)', { prop: 1 }),
+
+  // ---- Week of 1 Nov ----
+  b('dorin','2026-11-01', 0, 1, 'cell-line', 'Split best sub-line → +2 flasks for new bank'),
+  b('dorin','2026-11-01', 1, 1, 'cell-line', 'Plate→liquid line: weekly 2 flasks'),
+  b('dorin','2026-11-02', 0, 1, 'chemo', 'Chemo batches: TPC plating', { prop: 1 }),
+  b('dorin','2026-11-03', 0, 2, 'media-v1', '50/50 end: count + data', { prop: 1 }),
+  b('dorin','2026-11-05', 0, 1, 'chemo', 'Chemo TPC: read plates', { prop: 1 }),
+
+  b('nadav','2026-11-01', 0, 1, 'bpd-baseline', 'Define pass criteria for clean semi run', { prop: 1 }),
+  b('nadav','2026-11-01', 1, 1, 'contamination', 'Hands-on reactor clean w/ Yoni (dip tubes, filters)', { prop: 1 }),
+  b('nadav','2026-11-02', 0, 1, 'contamination', 'Autoclave indicators: large — media + harvest bottles', { prop: 1, tt: 1 }),
+  b('nadav','2026-11-03', 0, 1, 'contamination', 'Autoclave indicators: small — MF vessels', { prop: 1, tt: 1 }),
+  b('nadav','2026-11-04', 0, 1, 'contamination', 'Autoclave indicators: large — Dasgip vessels', { prop: 1, tt: 1 }),
+  b('nadav','2026-11-04', 1, 1, 'bpd-baseline', 'pH probe calibration / drift check', { prop: 1 }),
+  b('nadav','2026-11-05', 0, 1, 'cell-supply', 'Thursday bank'),
+
+  b('yoni', '2026-11-01', 0, 1, 'team', 'Technician: post job, start hiring', { prop: 1 }),
+  b('yoni', '2026-11-01', 1, 1, 'contamination', 'Hands-on reactor clean w/ Nadav → cleaning SOP', { prop: 1 }),
+  b('yoni', '2026-11-02', 0, 2, 'bpd-baseline', 'Report: how we measure cell density now, going forward, and why', { prop: 1 }),
+  b('yoni', '2026-11-03', 0, 3, 'cell-line', 'Sub-line analysis: aggregates × doubling time × pH × Brix', { prop: 1 }),
+  b('yoni', '2026-11-04', 1, 1, 'cell-line', 'Line 56 vs 41 comparison graph', { prop: 1 }),
+  b('yoni', '2026-11-05', 0, 1, 'cell-line', 'Room temp logs + AC back to 24 °C', { prop: 1 }),
+  b('yoni', '2026-11-05', 1, 1, 'analytical', 'PSD rig: camera/old phone, light box, black background', { prop: 1 }),
+
+  b('or',   '2026-11-01', 0, 1, 'drying-dsp', 'Ask ECL: biomass amount + freeze thickness', { prop: 1 }),
+  b('or',   '2026-11-02', 0, 2, 'chemo', 'Bubble reactor (10–20 L carboy): design', { prop: 1 }),
+  b('or',   '2026-11-04', 0, 1, 'drying-dsp', 'Dry freezer samples', { prop: 1 }),
+
+  // ---- Week of 8 Nov ----
+  b('dorin','2026-11-08', 0, 1, 'cell-line', 'Hand ~30–39 g to Nadav for new bank'),
+  b('dorin','2026-11-08', 1, 1, 'cell-line', 'Cryo pilot: drying curve in hood (day −8)', { prop: 1 }),
+  b('dorin','2026-11-09', 0, 1, 'cell-line', 'Plate→liquid line: weekly 2 flasks'),
+  b('dorin','2026-11-12', 0, 1, 'cell-line', 'Cryo: subculture for ~12 ml packed cells (day −4)', { prop: 1 }),
+
+  b('nadav','2026-11-08', 0, 1, 'cell-line', 'Receive cells from Dorin → start own bank'),
+  b('nadav','2026-11-09', 0, 1, 'contamination', 'Blind media hold: set up (no cells)', { prop: 1 }),
+  b('nadav','2026-11-12', 0, 1, 'cell-supply', 'Thursday bank'),
+
+  b('yoni', '2026-11-08', 0, 2, 'contamination', '5S: do reference area myself + photo standard', { prop: 1 }),
+  b('yoni', '2026-11-09', 0, 2, 'contamination', 'Contamination plan: room setup, Dec renovation option, cleaning log', { prop: 1 }),
+  b('yoni', '2026-11-10', 0, 1, 'bpd-baseline', 'pH: compare with Chemo full log', { prop: 1 }),
+  b('yoni', '2026-11-10', 1, 2, 'analytical', 'PSD: camera method vs Mastersizer', { prop: 1 }),
+
+  b('or',   '2026-11-08', 0, 1, 'functionality', 'Non-viability study: plate powder', { prop: 1 }),
+  b('or',   '2026-11-10', 0, 1, 'chemo', 'Bubble reactor: parts + build plan', { prop: 1 }),
+
+  // ---- Week of 15 Nov ----
+  b('dorin','2026-11-15', 0, 1, 'cell-line', 'Plate→liquid line: weekly 2 flasks'),
+  b('dorin','2026-11-15', 1, 1, 'cell-line', 'Cryo prep: alginate, CaCl₂, sucrose media, ST24 plates (day −1)', { prop: 1 }),
+  b('dorin','2026-11-16', 0, 2, 'cell-line', 'Cryo day 0: TTC, 2 bead lots → 8 sucrose lots', { prop: 1 }),
+  b('dorin','2026-11-17', 0, 1, 'cell-line', 'Cryo day 1: sucrose steps', { prop: 1 }),
+  b('dorin','2026-11-18', 0, 1, 'cell-line', 'Cryo day 2: sucrose steps', { prop: 1 }),
+  b('dorin','2026-11-18', 1, 1, 'media-v1', 'Filter vs autoclave end: count + data', { prop: 1 }),
+  b('dorin','2026-11-19', 0, 2, 'cell-line', 'Cryo day 3: dry all lots in hood + TTC', { prop: 1 }),
+
+  b('nadav','2026-11-15', 0, 1, 'cell-line', 'Bank expansion (target ~50 g to seed)', { prop: 1 }),
+  b('nadav','2026-11-17', 0, 1, 'contamination', 'Blind media hold: read out', { prop: 1 }),
+  b('nadav','2026-11-19', 0, 1, 'cell-supply', 'Thursday bank'),
+
+  b('yoni', '2026-11-15', 0, 2, 'contamination', '5S: others do remaining areas — Yoni signs off each', { prop: 1 }),
+  b('yoni', '2026-11-17', 0, 2, 'analytical', 'TTC quantification method', { prop: 1 }),
+
+  b('or',   '2026-11-16', 0, 1, 'drying-dsp', 'Validate ECL freeze conditions (once ECL answers)', { prop: 1 }),
+
+  // ---- Technician scenario only ----
+  b('tech', '2026-11-02', 0, 1, 'contamination', 'Autoclave indicators: large — media + harvest bottles', { prop: 1 }),
+  b('tech', '2026-11-03', 0, 1, 'contamination', 'Autoclave indicators: small — MF vessels', { prop: 1 }),
+  b('tech', '2026-11-04', 0, 1, 'contamination', 'Autoclave indicators: large — Dasgip vessels', { prop: 1 }),
+  b('tech', '2026-11-11', 0, 4, 'chemo', 'Bubble reactor build (with Or)', { prop: 1 }),
+  b('tech', '2026-11-16', 0, 4, 'chemo', 'Bubble reactor sterility + first test', { prop: 1 })
+];
+
+// Platforms: pb(platform, date, half, len, project, text, opts)
+const pb = (plat, date, h, len, p, t, o) => Object.assign({ plat, date, h, len, p, t }, o || {});
+const PB = [
+  pb('Dasgip DG5', '2026-10-29', 1, 26, 'bpd-baseline', 'DG5 run (if seeded) — end TBD', { prop: 1 }),
+  pb('Flasks', '2026-10-25', 0, 18, 'media-v1', '50/50 spent media → 3 Nov', { prop: 1 }),
+  pb('Flasks', '2026-10-25', 0, 38, 'media-v1', 'Filter vs autoclave → 18 Nov', { prop: 1 }),
+  pb('Flasks', '2026-11-01', 0, 30, 'cell-line', 'New line: 2 flasks / week'),
+  pb('Flasks', '2026-11-16', 0, 8, 'cell-line', 'Cryo: 8 sucrose lots', { prop: 1 }),
+  pb('MF (TBD)', '2026-11-09', 0, 14, 'contamination', 'Blind media hold', { prop: 1 })
+];
+
+// Not on the calendar yet: [project, name, need/blocker, status now, status with technician]
+const Q = [
+  ['bpd-baseline', 'Clean semi-continuous run (bioreactor)', 'Gated on: contamination under control + confirmed good line. Fallback if it fails: perfusion baseline, semi moves to Media V1.', 'gated', 'gated'],
+  ['chemo', 'Bubble reactor 10–20 L: build → runs', 'Or leads; execution needs Nadav time', 'needs Nadav', 'on calendar 11 Nov'],
+  ['bpd-opt', 'DOE: temperature deep-dive (then pH, DO)', 'Dasgip + Nadav; best temp, reversibility, product attributes', 'after baseline', 'after baseline'],
+  ['media-v1', 'Glucose correction to rescue 50% (flasks)', 'A flask slot + Dorin', 'after 3 Nov', 'after 3 Nov'],
+  ['media-v2', 'Metal reduction', 'Dorin; hormone-reduction data not promising so far', 'no date', 'no date'],
+  ['antifoam', 'Develop a working antifoam (Munzing)', 'Spun off from BPD baseline goal #2', 'no owner', 'no owner'],
+  ['new-lines', 'Tomato: revive in suspension + process', 'Owner and start TBD', 'no owner', 'no owner'],
+  ['new-lines', 'Citrus: get a line into suspension', 'Solid only so far; owner TBD', 'no owner', 'no owner'],
+  ['proc-val', 'Process validation: parameter limits × metabolomics', 'Needs a clean baseline first', 'after baseline', 'after baseline'],
+  ['functionality', 'GLP-1 simulated study (2× gastric retention)', 'Owner and dates TBD', 'no owner', 'no owner'],
+  ['drying-dsp', 'Criofarma bag tests', 'Or; waiting on bags', 'waiting', 'waiting'],
+  ['analytical', 'FDA viability: explore', 'Yoni; after PSD and TTC', 'no date', 'no date'],
+  ['team', 'Nadav away in December', 'Cover runs + bank; natural renovation window (Shimrit ↔ Einat)', 'plan cover', 'plan cover'],
+  ['gras', 'GRAS dossier', 'Shimrit runs it; reagent to Technion for HPLC. Check in with her later.', 'Shimrit', 'Shimrit'],
+  ['cell-line', 'Low priority: metabolomics samples (Shimrit), Microsynth DNA question', 'Only if cheap and no team time', 'no date', 'no date']
+];
+
+/* ================= ENGINE ================= */
+const DAYN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu'];
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const DAYS = [];
+(function () {
+  const d0 = new Date(START + 'T12:00:00');
+  for (let w = 0; w < NWEEKS; w++) for (let i = 0; i < 5; i++) {
+    const d = new Date(d0); d.setDate(d0.getDate() + w * 7 + i);
+    const iso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    DAYS.push({ iso, day: DAYN[i], date: d.getDate() + ' ' + MON[d.getMonth()] });
+  }
+})();
+const IDX = {}; DAYS.forEach((d, i) => IDX[d.iso] = i);
+const todayIso = (() => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })();
+const TODAY = IDX[todayIso] ?? -1;
+
 let state = {};
 const H = [];
-function setState(p){ state = Object.assign({}, state, p); render(); }
-function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function on(fn){ H.push(fn); return 'H['+(H.length-1)+']()'; }
-function vals(){
-    const st = state;
-    const sel = st.sel || null;
-    const tech = !!st.tech;
-    const platOn = !!st.plat, routineOn = !!st.routine, loadOn = !!st.load;
+function setState(p) { state = Object.assign({}, state, p); render(); }
+function on(fn) { H.push(fn); return 'H[' + (H.length - 1) + ']()'; }
+function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+const fmt = (x) => (Math.round(x * 2) / 2).toString();
+const slot = (it) => (IDX[it.date] ?? -999) * 2 + it.h;
 
-    const P = {
-      'cell-supply': { name: 'Cell supply', theme: 1, c: '#1F7A5A' },
-      'cell-line-investigation': { name: 'Cell-line investigation', theme: 1, c: '#0E5E6F' },
-      'cell-line-backup': { name: 'Cell-line backup', theme: 1, c: '#2F7A2F' },
-      'bpd-baseline': { name: 'BPD — clean baseline', theme: 2, c: '#1F5FAF' },
-      'contamination-control': { name: 'Contamination & 5S', theme: 2, c: '#3D4FA8' },
-      'analytical-methods': { name: 'Analytical methods', theme: 2, c: '#23699A' },
-      'media-v1': { name: 'Media V1', theme: 3, c: '#A0561A' },
-      'gras-dossier': { name: 'GRAS dossier', theme: 3, c: '#7C3F12' },
-      'drying-dsp': { name: 'Drying & DSP', theme: 3, c: '#8C6200' },
-      'chemo-support': { name: 'Chemo support', theme: 3, c: '#C2410C' },
-      'bpd-optimization': { name: 'BPD — optimization', theme: 4, c: '#6B4FA0' },
-      'media-v2': { name: 'Media V2', theme: 4, c: '#8E3F8E' },
-      'fruit-initiation': { name: 'New line from fruit', theme: 4, c: '#5B3D7A' }
-    };
-    const THEMES = [[1, '1 · Keep the line alive'], [2, '2 · Make it work at home'], [3, '3 · Support production'], [4, '4 · Innovate & improve']];
-
-    const PEOPLE = {
-      yoni: { name: 'Yoni', c: '#2B6CB0', routine: 0, cap: 5 },
-      nadav: { name: 'Nadav', c: '#B7410E', routine: 1, cap: 5, routineText: 'daily sampling & checks' },
-      dorin: { name: 'Dorin', c: '#2F855A', routine: 1, cap: 5, routineText: 'media prep, housekeeping' },
-      or: { name: 'Or', c: '#6B46C1', routine: 0, cap: null },
-      tech: { name: 'Technician', c: '#4A5568', routine: 0, cap: 5 }
-    };
-
-    const mk = (lane, d, h, len, p, t, toTech) => ({ lane, d, h, len, p, t, toTech: !!toTech });
-    const B = [
-      mk('yoni', 0, 1, 1, 'cell-line-backup', 'Review cryo deck'),
-      mk('yoni', 1, 0, 1, 'cell-line-investigation', 'R&D discussion'),
-      mk('yoni', 1, 1, 3, 'cell-line-investigation', 'Workplan draft'),
-      mk('yoni', 3, 0, 1, 'cell-line-investigation', 'Workplan → Shimrit'),
-      mk('yoni', 3, 1, 1, 'analytical-methods', 'Lock image method'),
-      mk('yoni', 4, 0, 1, 'contamination-control', '5S standard draft'),
-      mk('yoni', 5, 0, 4, 'cell-line-investigation', 'Semi-continuous historical analysis'),
-      mk('yoni', 7, 0, 1, 'bpd-baseline', 'Munzing call + terms'),
-      mk('yoni', 7, 1, 1, 'gras-dossier', 'GRAS: align w/ Shimrit'),
-      mk('yoni', 8, 0, 1, 'contamination-control', 'Lab reno plan'),
-      mk('yoni', 9, 0, 1, 'analytical-methods', 'Imaging routine starts'),
-
-      mk('nadav', 1, 0, 1, 'cell-line-investigation', 'R&D discussion'),
-      mk('nadav', 1, 1, 1, 'cell-line-investigation', 'Chemo-material report'),
-      mk('nadav', 2, 0, 1, 'contamination-control', 'New sterility filter: 1st use'),
-      mk('nadav', 2, 1, 1, 'bpd-baseline', 'STR13–15 run report'),
-      mk('nadav', 3, 0, 1, 'drying-dsp', 'Lyo samples + log'),
-      mk('nadav', 3, 1, 1, 'bpd-baseline', 'STR15 prep'),
-      mk('nadav', 4, 0, 1, 'cell-supply', 'Thursday bank'),
-      mk('nadav', 4, 1, 1, 'cell-supply', 'STR14 harvest + teardown'),
-      mk('nadav', 5, 0, 1, 'bpd-baseline', 'STR15 autoclave'),
-      mk('nadav', 5, 1, 1, 'bpd-baseline', 'STR15 inoculate'),
-      mk('nadav', 6, 0, 1, 'contamination-control', 'Sterility plates: read'),
-      mk('nadav', 6, 1, 1, 'drying-dsp', 'Lyo samples + log'),
-      mk('nadav', 7, 0, 1, 'bpd-baseline', 'STR15 draw-fill'),
-      mk('nadav', 8, 1, 1, 'bpd-baseline', 'kLa day (MF1)', 1),
-      mk('nadav', 8, 1, 1, 'chemo-support', 'Bubble reactor test', 1),
-      mk('nadav', 9, 0, 1, 'cell-supply', 'Thursday bank'),
-
-      mk('dorin', 0, 0, 2, 'cell-supply', 'Bank passage'),
-      mk('dorin', 1, 0, 1, 'cell-line-investigation', 'R&D discussion'),
-      mk('dorin', 1, 1, 1, 'media-v1', '3%: count'),
-      mk('dorin', 2, 0, 1, 'media-v1', '50/50 passage'),
-      mk('dorin', 2, 1, 1, 'cell-line-backup', 'Cryo #1: beads'),
-      mk('dorin', 3, 0, 1, 'media-v1', 'Filter/autoclave passage'),
-      mk('dorin', 3, 1, 1, 'cell-line-backup', 'Cryo #1: dry → LN2'),
-      mk('dorin', 4, 1, 1, 'cell-line-backup', 'Cryo #1: thaw + seed'),
-      mk('dorin', 5, 0, 2, 'cell-supply', 'Bank passage'),
-      mk('dorin', 6, 1, 1, 'analytical-methods', 'Imaging samples'),
-      mk('dorin', 7, 0, 2, 'media-v1', '50/50 end: count + data'),
-      mk('dorin', 8, 0, 1, 'media-v1', 'Filter/autoclave passage'),
-      mk('dorin', 9, 0, 1, 'cell-line-backup', 'Cryo #1: recovery check'),
-
-      mk('or', 0, 0, 1, 'cell-line-backup', 'Solid→liquid start'),
-      mk('or', 1, 0, 1, 'cell-line-investigation', 'R&D discussion'),
-      mk('or', 1, 1, 1, 'cell-line-investigation', 'Mastersizer results'),
-      mk('or', 4, 0, 1, 'fruit-initiation', 'Source fruit tissue'),
-      mk('or', 6, 0, 1, 'chemo-support', 'Bubble reactor plan'),
-
-      mk('tech', 2, 0, 2, 'chemo-support', 'Bubble reactor build'),
-      mk('tech', 3, 0, 2, 'cell-line-investigation', 'Partial-harvest exp prep'),
-      mk('tech', 4, 0, 1, 'chemo-support', 'Bubble reactor build'),
-      mk('tech', 5, 0, 2, 'bpd-optimization', 'DOE Temp 2 setup'),
-      mk('tech', 6, 0, 2, 'chemo-support', 'Bubble reactor sterility'),
-      mk('tech', 7, 0, 2, 'cell-line-investigation', 'Partial-harvest exp'),
-      mk('tech', 8, 0, 1, 'bpd-baseline', 'kLa day (MF1)'),
-      mk('tech', 8, 1, 1, 'chemo-support', 'Bubble reactor test')
-    ];
-
-    const pb = (plat, d, h, len, p, t, techOnly) => ({ plat, d, h, len, p, t, techOnly: !!techOnly });
-    const PB = [
-      pb('MF1', 8, 1, 1, 'bpd-baseline', 'kLa'),
-      pb('MF3', 0, 0, 10, 'cell-supply', 'STR14 cell supply'),
-      pb('MF3', 5, 1, 15, 'bpd-baseline', 'STR15 semi-continuous'),
-      pb('Dasgip', 5, 0, 15, 'bpd-optimization', 'DOE Temp 2', 1),
-      pb('Flask slot 1', 0, 0, 16, 'media-v1', '50/50 spent media → 3 Nov'),
-      pb('Flask slot 2', 0, 0, 20, 'media-v1', 'Filter vs autoclave → 18 Nov'),
-      pb('Flask slot 3', 0, 0, 4, 'media-v1', '3% → 26 Oct'),
-      pb('Flask slot 3', 2, 0, 18, 'cell-line-backup', 'Cryo #1 recovery flasks')
-    ];
-
-    const DAYS = [['Sun', '25 Oct'], ['Mon', '26 Oct'], ['Tue', '27 Oct'], ['Wed', '28 Oct'], ['Thu', '29 Oct'], ['Sun', '1 Nov'], ['Mon', '2 Nov'], ['Tue', '3 Nov'], ['Wed', '4 Nov'], ['Thu', '5 Nov']];
-    const TODAY = 4;
-
-    const visBlocks = B.filter((b) => (b.lane === 'tech' ? tech : !(tech && b.toTech)));
-    const visBars = PB.filter((b) => !b.techOnly || tech);
-    const fmt = (x) => (Math.round(x * 2) / 2).toString();
-
-    const pack = (list) => {
-      const rows = [];
-      list.forEach((it) => {
-        let r = 0;
-        while (rows[r] && rows[r].some((o) => it.a < o.z && o.a < it.a + it.len)) r++;
-        if (!rows[r]) rows[r] = [];
-        rows[r].push({ a: it.a, z: it.a + it.len });
-        it.row = r;
-      });
-      return rows.length;
-    };
-
-    const weeks = [0, 1].map((w) => {
-      const lo = w * 10, hi = lo + 10;
-      const items = [];
-      visBlocks.forEach((b) => {
-        const s = b.d * 2 + b.h, e = s + b.len;
-        const a = Math.max(s, lo), z = Math.min(e, hi);
-        if (z > a) items.push({ kind: 'b', b, a: a - lo, len: z - a });
-      });
-      items.sort((x, y) => x.a - y.a || y.len - x.len);
-      if (routineOn) {
-        for (let d = 0; d < 5; d++) ['nadav', 'dorin'].forEach((pid) => items.push({ kind: 'r', pid, a: d * 2, len: 2 }));
-      }
-      const nRows = Math.max(3, pack(items));
-
-      const out = items.map((it) => {
-        const pos = 'grid-column: ' + (it.a + 1) + ' / span ' + it.len + '; grid-row: ' + (it.row + 1) + ';';
-        if (it.kind === 'r') {
-          const pp = PEOPLE[it.pid];
-          return {
-            title: pp.name + ' — routine: ' + pp.routineText + ' (≈' + pp.routine + ' d/wk)',
-            label: pp.name + ' · routine',
-            initial: pp.name[0],
-            style: pos + ' margin: 2px; padding: 2px 6px; border-radius: 6px; display: flex; align-items: center; gap: 6px; min-width: 0; position: relative; z-index: 1; background: #ECEDE8; color: #4A4F55; font-size: 10.5px; opacity: ' + (sel ? 0.3 : 1) + ';',
-            dot: 'width: 16px; height: 16px; border-radius: 50%; background: ' + pp.c + '; color: #FFFFFF; font-size: 9px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: none;',
-            textStyle: 'white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;'
-          };
-        }
-        const b = it.b, pp = PEOPLE[b.lane], c = P[b.p].c;
-        const dim = sel && b.p !== sel, hit = sel && b.p === sel;
-        return {
-          title: pp.name + ' · ' + P[b.p].name + ' — ' + b.t + ' (' + fmt(b.len * 0.5) + ' d)',
-          label: b.t,
-          initial: pp.name[0],
-          style: pos + ' margin: 2px; padding: 5px 7px; border-radius: 6px; display: flex; align-items: center; gap: 7px; min-width: 0; min-height: 34px; box-sizing: border-box; position: relative; z-index: 1; background: ' + c + '; color: #FFFFFF; font-size: 11.5px; font-weight: 500; line-height: 1.25; opacity: ' + (dim ? 0.15 : 1) + ';' + (hit ? ' box-shadow: 0 0 0 2px #FFFFFF, 0 0 0 4px ' + c + ';' : ''),
-          dot: 'width: 20px; height: 20px; border-radius: 50%; background: ' + pp.c + '; border: 1.5px solid #FFFFFF; box-sizing: border-box; color: #FFFFFF; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: none;',
-          textStyle: 'display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-width: 0;'
-        };
-      });
-
-      const cells = [0, 1, 2, 3, 4].map((i) => ({ style: 'grid-column: ' + (i * 2 + 1) + ' / span 2; grid-row: 1 / span ' + nRows + '; border-left: 1px solid #E4E4DF; background: ' + (w * 5 + i === TODAY ? '#FFF7E3' : 'transparent') + ';' }));
-      const heads = [0, 1, 2, 3, 4].map((i) => {
-        const di = w * 5 + i;
-        return { day: DAYS[di][0], date: DAYS[di][1] + (di === TODAY ? ' · today' : ''), style: 'grid-column: ' + (i * 2 + 1) + ' / span 2; grid-row: 1; padding: 4px 8px; border-left: 1px solid #E4E4DF;' + (di === TODAY ? ' background: #FFF7E3; border-radius: 6px 6px 0 0;' : '') };
-      });
-
-      const pitems = [];
-      visBars.forEach((b) => {
-        const s = b.d * 2 + b.h, e = s + b.len;
-        const a = Math.max(s, lo), z = Math.min(e, hi);
-        if (z > a) pitems.push({ b, a: a - lo, len: z - a });
-      });
-      pitems.sort((x, y) => x.a - y.a || y.len - x.len);
-      const pRows = Math.max(1, pack(pitems));
-      const plats = pitems.map((it) => {
-        const c = P[it.b.p].c, dim = sel && it.b.p !== sel;
-        return {
-          label: it.b.plat + ' · ' + it.b.t,
-          title: it.b.plat + ' — ' + it.b.t + ' (' + P[it.b.p].name + ')',
-          style: 'grid-column: ' + (it.a + 1) + ' / span ' + it.len + '; grid-row: ' + (it.row + 1) + '; margin: 2px; padding: 0 8px; border-radius: 10px; font-size: 10.5px; font-weight: 600; display: flex; align-items: center; white-space: nowrap; overflow: hidden; min-width: 0; background: ' + c + '24; border: 1px solid ' + c + '; color: ' + c + '; opacity: ' + (dim ? 0.15 : 1) + ';'
-        };
-      });
-
-      const load = Object.keys(PEOPLE).filter((k) => k !== 'tech' || tech).map((k) => {
-        const pp = PEOPLE[k];
-        let d = pp.routine;
-        visBlocks.filter((b) => b.lane === k).forEach((b) => { const s = b.d * 2 + b.h; for (let i = s; i < s + b.len; i++) if (i >= lo && i < hi) d += 0.5; });
-        const over = pp.cap && d > pp.cap;
-        return {
-          text: pp.name + ' ' + fmt(d) + (pp.cap ? ' / ' + pp.cap : '') + ' d',
-          style: 'font-family: IBM Plex Mono, monospace; font-size: 12px; padding: 4px 10px; border-radius: 999px; ' + (over ? 'background: #FDE3E3; color: #9B1C1C; font-weight: 600;' : 'background: #F0F1EC; color: #2D3135;')
-        };
-      });
-
-      return {
-        heads, cells, items: out, plats, load,
-        gridStyle: 'display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); grid-template-rows: repeat(' + nRows + ', minmax(34px, auto));',
-        platGridStyle: 'display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); grid-template-rows: repeat(' + pRows + ', 26px);'
-      };
-    });
-
-    const halfHeads = [];
-    for (let i = 0; i < 10; i++) halfHeads.push({ label: i % 2 ? 'PM' : 'AM', style: 'grid-column: ' + (i + 1) + '; grid-row: 2; font-family: IBM Plex Mono, monospace; font-size: 9.5px; color: #8A8F94; padding: 0 0 4px 8px;' + (i % 2 ? '' : ' border-left: 1px solid #E4E4DF;') });
-
-    const themes = THEMES.map(([n, label]) => ({
-      label,
-      projects: Object.keys(P).filter((k) => P[k].theme === n).map((k) => {
-        const on = sel === k;
-        return {
-          name: P[k].name,
-          swatch: 'width: 12px; height: 12px; border-radius: 3px; background: ' + P[k].c + '; flex: none;',
-          style: 'display: flex; gap: 9px; align-items: center; width: 100%; min-height: 40px; padding: 6px 8px; margin-bottom: 2px; border-radius: 8px; cursor: pointer; font-size: 12.5px; color: #1B1D1F; text-align: left; border: 1px solid ' + (on ? P[k].c : 'transparent') + '; background: ' + (on ? P[k].c + '14' : 'transparent') + ';',
-          pick: () => setState({ sel: sel === k ? null : k })
-        };
-      })
-    }));
-
-    const Q = [
-      { p: 'cell-line-investigation', name: 'Partial-harvest hypothesis experiments', need: 'An MF vessel + Nadav ≈1.5 d/wk', now: 'Jan 2027', t: 'on calendar 28 Oct' },
-      { p: 'chemo-support', name: 'Bubble reactor: build → first run', need: 'Nadav ≈2.5 d/wk for 4–6 weeks', now: 'Feb 2027', t: 'on calendar 27 Oct' },
-      { p: 'bpd-optimization', name: 'DOE Temp 2 on the Dasgip', need: 'Dasgip + Nadav ≈2 d/wk', now: 'Q2 2027', t: 'on calendar 1 Nov' },
-      { p: 'media-v1', name: 'Light-effect study', need: 'One flask slot (slots are the limit, not people)', now: 'after 3 Nov', t: 'after 3 Nov' },
-      { p: 'cell-line-investigation', name: 'SSR genetic-stability send-out', need: 'An owner, ≈½ d', now: 'no owner', t: 'no owner' },
-      { p: 'contamination-control', name: 'Lab renovation — implementation', need: 'A plan deadline and a budget decision', now: 'no plan date', t: 'no plan date' }
-    ];
-    const queue = Q.map((q) => {
-      const v = tech ? q.t : q.now;
-      const good = v.indexOf('on calendar') === 0;
-      const blocked = v === 'no owner' || v === 'no plan date';
-      return {
-        name: q.name, need: q.need, when: v,
-        dot: 'width: 10px; height: 10px; border-radius: 3px; margin-top: 4px; background: ' + P[q.p].c + '; opacity: ' + (sel && q.p !== sel ? 0.25 : 1) + ';',
-        whenStyle: 'text-align: right; font-family: IBM Plex Mono, monospace; font-size: 11.5px; padding: 2px 6px; border-radius: 4px; justify-self: end; ' + (good ? 'background: #E3F2E8; color: #1D5E36;' : blocked ? 'background: #EEEEEA; color: #4A4F55;' : 'background: #FDE3E3; color: #9B1C1C;')
-      };
-    });
-
-    const seg = (on, first) => 'border: 0; ' + (first ? '' : 'border-left: 1px solid #E1E2DC; ') + 'padding: 0 14px; min-height: 36px; cursor: pointer; ' + (on ? 'background: #1B1D1F; color: #FFFFFF; font-weight: 600;' : 'background: #FFFFFF; color: #1B1D1F;');
-    const chip = (on) => 'min-height: 36px; padding: 0 14px; border-radius: 999px; cursor: pointer; font-size: 12.5px; border: 1px solid ' + (on ? '#1B1D1F' : '#C9CBC4') + '; background: ' + (on ? '#1B1D1F' : '#FFFFFF') + '; color: ' + (on ? '#FFFFFF' : '#1B1D1F') + '; font-weight: ' + (on ? 600 : 400) + ';';
-
-    return {
-      themes, weeks, halfHeads, queue,
-      platOn, routineOn, loadOn,
-      queueTitle: tech ? 'With a technician: what moves' : 'Doesn’t fit with the current team',
-      queueIntro: tech ? 'The technician takes the bubble reactor, the partial-harvest experiments, DOE Temp 2 and the kLa day off Nadav. Two items still need a decision, not hands.' : 'Planned work with no free capacity, in theme order, with the earliest realistic start.',
-      allStyle: 'width: 100%; min-height: 40px; padding: 8px 10px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12.5px; text-align: left; border: 1px solid ' + (sel ? '#E1E2DC' : '#1B1D1F') + '; background: ' + (sel ? '#FFFFFF' : '#1B1D1F') + '; color: ' + (sel ? '#1B1D1F' : '#FFFFFF') + ';',
-      clearSel: () => setState({ sel: null }),
-      btnNow: seg(!tech, true), btnTech: seg(tech, false),
-      setNow: () => setState({ tech: false }),
-      setTech: () => setState({ tech: true }),
-      chipPlat: chip(platOn), chipRoutine: chip(routineOn), chipLoad: chip(loadOn),
-      togglePlat: () => setState({ plat: !platOn }),
-      toggleRoutine: () => setState({ routine: !routineOn }),
-      toggleLoad: () => setState({ load: !loadOn })
-    };
+function pack(list) {
+  const rows = [];
+  list.forEach((it) => {
+    let r = 0;
+    while (rows[r] && rows[r].some((o) => it.a < o.z && o.a < it.a + it.len)) r++;
+    (rows[r] = rows[r] || []).push({ a: it.a, z: it.a + it.len });
+    it.row = r;
+  });
+  return rows.length;
 }
-function render(){
+
+function render() {
   H.length = 0;
-  const v = vals();
-  let h = '';
-  h += '<div style="min-height: 100vh; background: #F4F4F1; color: #1B1D1F; font-family: \'IBM Plex Sans\', system-ui, sans-serif; font-size: 13px; box-sizing: border-box; padding: 20px 24px 40px">';
-  h += '<header style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 16px"><div>';
-  h += '<div style="font-family: \'IBM Plex Mono\', monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #5F6368">Novella · Modi\'in R&amp;D</div>';
-  h += '<h1 style="margin: 4px 0 0; font-size: 26px; font-weight: 700; letter-spacing: -0.01em">Who is doing what, when</h1></div>';
-  h += '<div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center">';
-  h += '<div style="display: flex; border: 1px solid #C9CBC4; border-radius: 8px; overflow: hidden; background: #FFFFFF">';
-  h += '<button onclick="'+on(v.setNow)+'" style="'+v.btnNow+'">Current team</button>';
-  h += '<button onclick="'+on(v.setTech)+'" style="'+v.btnTech+'">+ Technician</button></div>';
-  h += '<button onclick="'+on(v.togglePlat)+'" aria-pressed="'+v.platOn+'" style="'+v.chipPlat+'">Platforms</button>';
-  h += '<button onclick="'+on(v.toggleRoutine)+'" aria-pressed="'+v.routineOn+'" style="'+v.chipRoutine+'">Routine</button>';
-  h += '<button onclick="'+on(v.toggleLoad)+'" aria-pressed="'+v.loadOn+'" style="'+v.chipLoad+'">Load</button>';
+  const sel = state.sel || null, tech = !!state.tech, who = state.who || null;
+  const platOn = !!state.plat, routineOn = !!state.routine, loadOn = !!state.load;
+
+  let blocks = B.filter((x) => (x.lane === 'tech' ? tech : !(tech && x.tt)));
+  if (who) blocks = blocks.filter((x) => x.lane === who);
+  const bars = PB;
+
+  const seg = (on1, first) => 'border:0;' + (first ? '' : 'border-left:1px solid #E1E2DC;') + 'padding:0 14px;min-height:36px;cursor:pointer;' + (on1 ? 'background:#1B1D1F;color:#FFFFFF;font-weight:600;' : 'background:#FFFFFF;color:#1B1D1F;');
+  const chip = (on1, c) => 'min-height:36px;padding:0 14px;border-radius:999px;cursor:pointer;font-size:12.5px;display:inline-flex;align-items:center;gap:7px;border:1px solid ' + (on1 ? (c || '#1B1D1F') : '#C9CBC4') + ';background:' + (on1 ? (c || '#1B1D1F') : '#FFFFFF') + ';color:' + (on1 ? '#FFFFFF' : '#1B1D1F') + ';font-weight:' + (on1 ? 600 : 400) + ';';
+
+  let h = '<div style="min-height:100vh;background:#F4F4F1;color:#1B1D1F;font-family:\'IBM Plex Sans\',system-ui,sans-serif;font-size:13px;box-sizing:border-box;padding:20px 24px 40px">';
+  // header
+  h += '<header style="display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:12px"><div>';
+  h += '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#5F6368">Novella · Modi\'in R&amp;D</div>';
+  h += '<h1 style="margin:4px 0 0;font-size:26px;font-weight:700;letter-spacing:-.01em">Who is doing what, when</h1></div>';
+  h += '<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">';
+  h += '<div style="display:flex;border:1px solid #C9CBC4;border-radius:8px;overflow:hidden;background:#FFFFFF">';
+  h += '<button onclick="' + on(() => setState({ tech: false })) + '" style="' + seg(!tech, true) + '">Current team</button>';
+  h += '<button onclick="' + on(() => setState({ tech: true })) + '" style="' + seg(tech, false) + '">+ Technician</button></div>';
+  h += '<button onclick="' + on(() => setState({ plat: !platOn })) + '" aria-pressed="' + platOn + '" style="' + chip(platOn) + '">Platforms</button>';
+  h += '<button onclick="' + on(() => setState({ routine: !routineOn })) + '" aria-pressed="' + routineOn + '" style="' + chip(routineOn) + '">Routine</button>';
+  h += '<button onclick="' + on(() => setState({ load: !loadOn })) + '" aria-pressed="' + loadOn + '" style="' + chip(loadOn) + '">Load</button>';
   h += '</div></header>';
-  h += '<div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">';
-  h += '<aside style="flex: 1 1 220px; max-width: 250px; min-width: 0; background: #FFFFFF; border: 1px solid #E1E2DC; border-radius: 12px; padding: 14px">';
-  h += '<button onclick="'+on(v.clearSel)+'" style="'+v.allStyle+'">All projects</button>';
-  v.themes.forEach(th => {
-    h += '<div style="margin-top: 14px"><div style="font-family: \'IBM Plex Mono\', monospace; font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: #5F6368; margin-bottom: 4px">'+esc(th.label)+'</div>';
-    th.projects.forEach(pr => {
-      h += '<button onclick="'+on(pr.pick)+'" style="'+pr.style+'"><span style="'+pr.swatch+'"></span><span style="font-weight: 600; text-align: left">'+esc(pr.name)+'</span></button>';
+
+  // person filter row
+  h += '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px">';
+  h += '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#5F6368;margin-right:4px">Show</span>';
+  h += '<button onclick="' + on(() => setState({ who: null })) + '" aria-pressed="' + !who + '" style="' + chip(!who) + '">Everyone</button>';
+  Object.keys(PEOPLE).filter((k) => k !== 'tech' || tech).forEach((k) => {
+    const pp = PEOPLE[k], onp = who === k;
+    h += '<button onclick="' + on(() => setState({ who: onp ? null : k })) + '" aria-pressed="' + onp + '" style="' + chip(onp, pp.c) + '"><span style="width:18px;height:18px;border-radius:50%;background:' + pp.c + ';color:#FFFFFF;font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;border:1.5px solid #FFFFFF">' + pp.name[0] + '</span>' + esc(pp.name) + '</button>';
+  });
+  h += '<span style="margin-left:auto;display:inline-flex;align-items:center;gap:8px;font-size:12px;color:#4A4F55"><span style="display:inline-block;width:34px;height:18px;border-radius:5px;background:#5F6368;outline:2px dashed rgba(255,255,255,.85);outline-offset:-4px"></span>dashed = proposed, not yet confirmed</span>';
+  h += '</div>';
+
+  // layout
+  h += '<div style="display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start">';
+  h += '<aside style="flex:1 1 220px;max-width:260px;min-width:0;background:#FFFFFF;border:1px solid #E1E2DC;border-radius:12px;padding:14px">';
+  h += '<button onclick="' + on(() => setState({ sel: null })) + '" style="width:100%;min-height:40px;padding:8px 10px;border-radius:8px;cursor:pointer;font-weight:600;font-size:12.5px;text-align:left;border:1px solid ' + (sel ? '#E1E2DC' : '#1B1D1F') + ';background:' + (sel ? '#FFFFFF' : '#1B1D1F') + ';color:' + (sel ? '#1B1D1F' : '#FFFFFF') + '">All projects</button>';
+  THEMES.forEach(([n, label]) => {
+    h += '<div style="margin-top:14px"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:#5F6368;margin-bottom:4px;line-height:1.4">' + esc(label) + '</div>';
+    Object.keys(P).filter((k) => P[k].theme === n).forEach((k) => {
+      const onp = sel === k;
+      h += '<button onclick="' + on(() => setState({ sel: onp ? null : k })) + '" style="display:flex;gap:9px;align-items:center;width:100%;min-height:40px;padding:6px 8px;margin-bottom:2px;border-radius:8px;cursor:pointer;font-size:12.5px;color:#1B1D1F;text-align:left;border:1px solid ' + (onp ? P[k].c : 'transparent') + ';background:' + (onp ? P[k].c + '14' : 'transparent') + '"><span style="width:12px;height:12px;border-radius:3px;background:' + P[k].c + ';flex:none"></span><span style="font-weight:600">' + esc(P[k].name) + '</span></button>';
     });
     h += '</div>';
   });
-  h += '</aside><main style="flex: 999 1 640px; min-width: 0; display: flex; flex-direction: column; gap: 16px">';
-  v.weeks.forEach(wk => {
-    h += '<section style="background: #FFFFFF; border: 1px solid #E1E2DC; border-radius: 12px; overflow-x: auto"><div style="min-width: 900px; padding: 10px 12px 12px">';
-    h += '<div style="display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); grid-template-rows: auto auto">';
-    wk.heads.forEach(dh => { h += '<div style="'+dh.style+'"><span style="font-weight: 700; font-size: 14px">'+esc(dh.day)+'</span><span style="font-size: 12px; color: #5F6368; margin-left: 6px">'+esc(dh.date)+'</span></div>'; });
-    v.halfHeads.forEach(hh => { h += '<div style="'+hh.style+'">'+hh.label+'</div>'; });
-    h += '</div><div style="'+wk.gridStyle+'">';
-    wk.cells.forEach(c => { h += '<div style="'+c.style+'"></div>'; });
-    wk.items.forEach(it => { h += '<div title="'+esc(it.title)+'" style="'+it.style+'"><span style="'+it.dot+'">'+esc(it.initial)+'</span><span style="'+it.textStyle+'">'+esc(it.label)+'</span></div>'; });
+  h += '</aside><main style="flex:999 1 640px;min-width:0;display:flex;flex-direction:column;gap:16px">';
+
+  for (let w = 0; w < NWEEKS; w++) {
+    const lo = w * 10, hi = lo + 10;
+    const items = [];
+    blocks.forEach((x) => {
+      const s = slot(x), e = s + x.len, a = Math.max(s, lo), z = Math.min(e, hi);
+      if (z > a) items.push({ kind: 'b', x, a: a - lo, len: z - a });
+    });
+    items.sort((p, q) => p.a - q.a || q.len - p.len);
+    if (routineOn) for (let d = 0; d < 5; d++) ['nadav', 'dorin'].filter((k) => !who || who === k).forEach((k) => items.push({ kind: 'r', k, a: d * 2, len: 2 }));
+    const nRows = Math.max(3, pack(items));
+
+    h += '<section style="background:#FFFFFF;border:1px solid #E1E2DC;border-radius:12px;overflow-x:auto"><div style="min-width:1000px;padding:10px 12px 12px">';
+    h += '<div style="display:grid;grid-template-columns:repeat(10,minmax(0,1fr));grid-template-rows:auto auto">';
+    for (let i = 0; i < 5; i++) {
+      const di = w * 5 + i, dd = DAYS[di], isT = di === TODAY;
+      h += '<div style="grid-column:' + (i * 2 + 1) + ' / span 2;grid-row:1;padding:4px 8px;border-left:1px solid #E4E4DF;' + (isT ? 'background:#FFF7E3;border-radius:6px 6px 0 0;' : '') + '"><span style="font-weight:700;font-size:14px">' + dd.day + '</span><span style="font-size:12px;color:#5F6368;margin-left:6px">' + dd.date + (isT ? ' · today' : '') + '</span></div>';
+    }
+    for (let i = 0; i < 10; i++) h += '<div style="grid-column:' + (i + 1) + ';grid-row:2;font-family:\'IBM Plex Mono\',monospace;font-size:9.5px;color:#6B7075;padding:0 0 4px 8px;' + (i % 2 ? '' : 'border-left:1px solid #E4E4DF;') + '">' + (i % 2 ? 'PM' : 'AM') + '</div>';
     h += '</div>';
-    if (v.platOn) {
-      h += '<div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid #E1E2DC"><div style="'+wk.platGridStyle+'">';
-      wk.plats.forEach(pb => { h += '<div title="'+esc(pb.title)+'" style="'+pb.style+'">'+esc(pb.label)+'</div>'; });
+
+    h += '<div style="display:grid;grid-template-columns:repeat(10,minmax(0,1fr));grid-template-rows:repeat(' + nRows + ',minmax(34px,auto))">';
+    for (let i = 0; i < 5; i++) {
+      const di = w * 5 + i;
+      h += '<div style="grid-column:' + (i * 2 + 1) + ' / span 2;grid-row:1 / span ' + nRows + ';border-left:1px solid #E4E4DF;background:' + (di === TODAY ? '#FFF7E3' : (di < TODAY ? '#FAFAF8' : 'transparent')) + '"></div>';
+    }
+    items.forEach((it) => {
+      const pos = 'grid-column:' + (it.a + 1) + ' / span ' + it.len + ';grid-row:' + (it.row + 1) + ';';
+      if (it.kind === 'r') {
+        const pp = PEOPLE[it.k];
+        h += '<div title="' + esc(pp.name + ' — routine: ' + pp.routineText) + '" style="' + pos + 'margin:2px;padding:3px 6px;border-radius:6px;display:flex;align-items:center;gap:6px;min-width:0;position:relative;z-index:1;background:#ECEDE8;color:#3F444A;font-size:10.5px;opacity:' + (sel ? .3 : 1) + '"><span style="width:16px;height:16px;border-radius:50%;background:' + pp.c + ';color:#FFFFFF;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none">' + pp.name[0] + '</span><span style="overflow-wrap:anywhere">' + esc(pp.name) + ' · routine</span></div>';
+        return;
+      }
+      const x = it.x, pp = PEOPLE[x.lane], c = P[x.p].c, dim = sel && x.p !== sel, hit = sel && x.p === sel;
+      h += '<div class="blk' + (x.prop ? ' prop' : '') + '" title="' + esc(pp.name + ' · ' + P[x.p].name + ' — ' + x.t + ' (' + fmt(x.len * .5) + ' d)' + (x.prop ? ' · proposed' : '')) + '" style="' + pos + 'background:' + c + ';opacity:' + (dim ? .15 : 1) + ';' + (hit ? 'box-shadow:0 0 0 2px #FFFFFF,0 0 0 4px ' + c + ';' : '') + '"><span class="dot" style="background:' + pp.c + '">' + pp.name[0] + '</span><span class="tx">' + esc(x.t) + '</span></div>';
+    });
+    h += '</div>';
+
+    if (platOn) {
+      const pit = [];
+      bars.forEach((x) => { const s = slot(x), e = s + x.len, a = Math.max(s, lo), z = Math.min(e, hi); if (z > a) pit.push({ x, a: a - lo, len: z - a }); });
+      pit.sort((p, q) => p.a - q.a || q.len - p.len);
+      const pr = Math.max(1, pack(pit));
+      h += '<div style="margin-top:10px;padding-top:8px;border-top:1px solid #E1E2DC"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#5F6368;margin-bottom:4px">Platforms</div><div style="display:grid;grid-template-columns:repeat(10,minmax(0,1fr));grid-template-rows:repeat(' + pr + ',minmax(26px,auto))">';
+      pit.forEach((it) => {
+        const c = P[it.x.p].c, dim = sel && it.x.p !== sel;
+        h += '<div title="' + esc(it.x.plat + ' — ' + it.x.t) + '" style="grid-column:' + (it.a + 1) + ' / span ' + it.len + ';grid-row:' + (it.row + 1) + ';margin:2px;padding:3px 8px;border-radius:10px;font-size:10.5px;font-weight:600;line-height:1.3;overflow-wrap:anywhere;min-width:0;background:' + c + '1F;border:1px ' + (it.x.prop ? 'dashed' : 'solid') + ' ' + c + ';color:' + c + ';opacity:' + (dim ? .15 : 1) + '">' + esc(it.x.plat + ' · ' + it.x.t) + '</div>';
+      });
       h += '</div></div>';
     }
-    if (v.loadOn) {
-      h += '<div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid #E1E2DC; display: flex; flex-wrap: wrap; gap: 8px">';
-      wk.load.forEach(ld => { h += '<span style="'+ld.style+'">'+esc(ld.text)+'</span>'; });
+
+    if (loadOn) {
+      h += '<div style="margin-top:10px;padding-top:8px;border-top:1px solid #E1E2DC;display:flex;flex-wrap:wrap;gap:8px">';
+      Object.keys(PEOPLE).filter((k) => (k !== 'tech' || tech) && (!who || who === k)).forEach((k) => {
+        const pp = PEOPLE[k];
+        let d = pp.routine;
+        B.filter((x) => (x.lane === 'tech' ? tech : !(tech && x.tt)) && x.lane === k).forEach((x) => { const s = slot(x); for (let i = s; i < s + x.len; i++) if (i >= lo && i < hi) d += .5; });
+        const over = pp.cap && d > pp.cap;
+        h += '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:12px;padding:4px 10px;border-radius:999px;' + (over ? 'background:#FDE3E3;color:#9B1C1C;font-weight:600;' : 'background:#F0F1EC;color:#2D3135;') + '">' + esc(pp.name + ' ' + fmt(d) + (pp.cap ? ' / ' + pp.cap : '') + ' d') + '</span>';
+      });
       h += '</div>';
     }
     h += '</div></section>';
-  });
-  h += '<section style="background: #FFFFFF; border: 1px solid #E1E2DC; border-radius: 12px; padding: 16px 18px">';
-  h += '<h2 style="margin: 0; font-size: 17px">'+esc(v.queueTitle)+'</h2><p style="margin: 6px 0 10px; line-height: 1.5; color: #2D3135">'+esc(v.queueIntro)+'</p>';
-  v.queue.forEach(q => {
-    h += '<div style="display: grid; grid-template-columns: 12px minmax(0, 1fr) 130px; gap: 10px; padding: 8px 0; border-top: 1px solid #EEEEEA; align-items: start"><span style="'+q.dot+'"></span>';
-    h += '<span style="display: flex; flex-direction: column; gap: 2px; min-width: 0"><span style="font-weight: 600">'+esc(q.name)+'</span><span style="font-size: 11.5px; color: #5F6368">'+esc(q.need)+'</span></span>';
-    h += '<span style="'+q.whenStyle+'">'+esc(q.when)+'</span></div>';
+  }
+
+  // queue
+  h += '<section style="background:#FFFFFF;border:1px solid #E1E2DC;border-radius:12px;padding:16px 18px">';
+  h += '<h2 style="margin:0;font-size:17px">' + (tech ? 'With a technician: what moves' : 'Not on the calendar yet') + '</h2>';
+  h += '<p style="margin:6px 0 10px;line-height:1.5;color:#2D3135">' + (tech ? 'The technician takes the autoclave-indicator runs and the bubble-reactor build off Nadav. Most other items still need an owner or a gate to clear, not hands.' : 'Planned work with no slot yet — gated, waiting, or without an owner.') + '</p>';
+  Q.forEach(([p, name, need, now, wt]) => {
+    const v = tech ? wt : now, good = v.indexOf('on calendar') === 0, red = v === 'needs Nadav' || v === 'plan cover';
+    h += '<div style="display:grid;grid-template-columns:12px minmax(0,1fr) 130px;gap:10px;padding:8px 0;border-top:1px solid #EEEEEA;align-items:start;opacity:' + (sel && p !== sel ? .3 : 1) + '"><span style="width:10px;height:10px;border-radius:3px;margin-top:4px;background:' + P[p].c + '"></span>';
+    h += '<span style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-weight:600">' + esc(name) + '</span><span style="font-size:11.5px;color:#5F6368;line-height:1.45">' + esc(need) + '</span></span>';
+    h += '<span style="text-align:right;font-family:\'IBM Plex Mono\',monospace;font-size:11.5px;padding:2px 6px;border-radius:4px;justify-self:end;' + (good ? 'background:#E3F2E8;color:#1D5E36;' : red ? 'background:#FDE3E3;color:#9B1C1C;' : 'background:#EEEEEA;color:#3F444A;') + '">' + esc(v) + '</span></div>';
   });
   h += '</section></main></div></div>';
   document.getElementById('app').innerHTML = h;
