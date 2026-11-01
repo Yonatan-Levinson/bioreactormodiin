@@ -73,9 +73,8 @@ const B = [
 
   // ---- Week of 1 Nov ----
   b('dorin','2026-11-01', 0, 1, 'cell-line', 'Split best sub-line → +2 flasks for new bank'),
-  b('dorin','2026-11-01', 1, 1, 'cell-line', 'Plate→liquid line: weekly 2 flasks'),
   b('dorin','2026-11-02', 0, 1, 'chemo', 'Chemo batches: TPC plating', { prop: 1 }),
-  b('dorin','2026-11-03', 0, 2, 'media-v1', '50/50 end: count + data', { prop: 1 }),
+  b('dorin','2026-11-03', 0, 1, 'media-v1', '50%: last measurement → decide whether to continue'),
   b('dorin','2026-11-05', 0, 1, 'chemo', 'Chemo TPC: read plates', { prop: 1 }),
 
   b('nadav','2026-11-01', 0, 1, 'bpd-baseline', 'Define pass criteria for clean semi run', { prop: 1 }),
@@ -109,7 +108,6 @@ const B = [
 
   // ---- Week of 8 Nov ----
   b('dorin','2026-11-08', 0, 1, 'cell-line', 'Hand ~30–39 g to Nadav for new bank'),
-  b('dorin','2026-11-09', 1, 1, 'cell-line', 'Plate→liquid line: weekly 2 flasks', { prop: 1 }),
 
   b('nadav','2026-11-08', 0, 1, 'cell-line', 'Receive cells from Dorin → start own bank'),
   b('nadav','2026-11-09', 0, 1, 'contamination', 'Blind media hold: set up (no cells)', { prop: 1 }),
@@ -124,8 +122,6 @@ const B = [
   b('or',   '2026-11-10', 0, 1, 'chemo', 'Bubble reactor: parts + build plan', { prop: 1 }),
 
   // ---- Week of 15 Nov ----
-  b('dorin','2026-11-15', 0, 1, 'cell-line', 'Plate→liquid line: weekly 2 flasks'),
-  b('dorin','2026-11-18', 1, 1, 'media-v1', 'Filter vs autoclave end: count + data', { prop: 1 }),
 
   b('nadav','2026-11-15', 0, 1, 'cell-line', 'Bank expansion (target ~50 g to seed)', { prop: 1 }),
   b('nadav','2026-11-17', 0, 1, 'contamination', 'Blind media hold: read out', { prop: 1 }),
@@ -144,13 +140,30 @@ const B = [
   b('tech', '2026-11-16', 0, 4, 'chemo', 'Bubble reactor sterility + first test', { prop: 1 })
 ];
 
+// Recurring: Dorin's plate→liquid line, every Sunday from 1 Nov, indefinitely
+(function () {
+  const d = new Date('2026-11-01T12:00:00'), end = Date.parse(END + 'T23:59:59');
+  while (d.getTime() <= end) {
+    const iso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    B.push(b('dorin', iso, 0, 1, 'cell-line', 'Plate→liquid line: weekly 2 flasks'));
+    d.setDate(d.getDate() + 7);
+  }
+})();
+
+// Media V1 recurring work (Dorin)
+['2026-11-02', '2026-11-09'].forEach((d) => B.push(b('dorin', d, 0, 1, 'media-v1', '3% experiment: Monday work')));
+B.push(b('dorin', '2026-11-16', 0, 1, 'media-v1', '3% experiment: Monday work (if it runs to 16 Nov)', { prop: 1 }));
+['2026-11-04', '2026-11-11', '2026-11-18'].forEach((d) => B.push(b('dorin', d, 1, 1, 'media-v1', 'Filter vs autoclave: Wednesday work')));
+B.push(b('dorin', '2026-11-25', 1, 1, 'media-v1', 'Filter vs autoclave: last Wednesday → data'));
+
 // Platforms: pb(platform, date, half, len, project, text, opts)
 const pb = (plat, date, h, len, p, t, o) => Object.assign({ plat, date, h, len, p, t }, o || {});
 const PB = [
   pb('Dasgip DG5', '2026-10-29', 1, 26, 'bpd-baseline', 'DG5 run (if seeded) — end TBD', { prop: 1 }),
-  pb('Flasks', '2026-10-25', 0, 18, 'media-v1', '50/50 spent media → 3 Nov', { prop: 1 }),
-  pb('Flasks', '2026-10-25', 0, 38, 'media-v1', 'Filter vs autoclave → 18 Nov', { prop: 1 }),
-  pb('Flasks', '2026-11-01', 0, 30, 'cell-line', 'New line: 2 flasks / week'),
+  pb('Flasks', '2026-10-25', 0, 18, 'media-v1', '50% experiment → decide 3 Nov', { prop: 1 }),
+  pb('Flasks', '2026-10-25', 0, 30, 'media-v1', '3% (one group) → 9 Nov, maybe 16'),
+  pb('Flasks', '2026-10-25', 0, 48, 'media-v1', 'Filter vs autoclave → 25 Nov'),
+  pb('Flasks', '2026-11-01', 0, 999, 'cell-line', 'New line: 2 flasks / week (ongoing)'),
   pb('Flasks', '2026-11-04', 0, 6, 'cell-line', 'Cryo: recultured cells (4 °C → Wed)'),
   pb('Flasks', '2026-11-08', 1, 7, 'cell-line', 'Cryo: 8 sucrose lots'),
   pb('MF (TBD)', '2026-11-09', 0, 14, 'contamination', 'Blind media hold', { prop: 1 })
@@ -192,7 +205,7 @@ const TL = {
     ms('Cryo: all lots dried', '2026-11-11'),
     ms('Gate: setup cleared (media hold passes)', '2026-11-19', { prop: 1 }),
     ph('New line in bioreactor = clean semi run', '2026-11-23', '2026-12-10', { prop: 1, note: 'Runs into Nadav’s December absence — needs cover, or slips to January' }),
-    ph('Plate→liquid line: 2 flasks/wk for 6–8 wks', '2026-11-01', '2026-12-20'),
+    ph('Plate→liquid line: 2 flasks every Sunday (ongoing)', '2026-11-01', END),
     ms('Decide: is the new line good?', '2026-12-20', { prop: 1 })
   ],
   'bpd-baseline': [
@@ -225,8 +238,10 @@ const TL = {
     ph('Validate ECL freeze conditions', '2026-11-16', '2026-11-16', { prop: 1, note: 'Waits on ECL’s answer' })
   ],
   'media-v1': [
-    ms('50/50 experiment ends', '2026-11-03', { prop: 1 }),
-    ms('Filter vs autoclave ends', '2026-11-18', { prop: 1 })
+    ms('50%: last measurement → continue or stop?', '2026-11-03'),
+    ph('3% experiment (one group, Mondays)', '2026-10-25', '2026-11-09', { note: 'May run to 16 Nov' }),
+    ph('Filter vs autoclave (Wednesdays)', '2026-10-25', '2026-11-25'),
+    ms('Filter vs autoclave: final data', '2026-11-25')
   ],
   'functionality': [
     ms('In vitro digestion done (Dorin)', '2026-10-25'),
