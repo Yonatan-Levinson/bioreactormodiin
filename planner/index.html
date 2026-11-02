@@ -66,27 +66,27 @@ const B = [
   b('dorin','2026-10-28', 1, 1, 'cell-line', '"What changed" meeting w/ Shimrit'),
   b('or',   '2026-10-28', 1, 1, 'cell-line', '"What changed" meeting w/ Shimrit'),
   b('nadav','2026-10-28', 0, 1, 'bpd-baseline', 'STR16 stopped — contaminated'),
-  b('nadav','2026-10-29', 0, 1, 'cell-line', 'Count bank + TTC with Or → go / no-go'),
+  b('nadav','2026-10-29', 0, 1, 'cell-line', 'Count bank + TTC with Or → GO: continue own bank'),
   b('or',   '2026-10-29', 0, 1, 'cell-line', 'Count Nadav’s bank + TTC with Nadav'),
-  b('nadav','2026-10-29', 1, 1, 'bpd-baseline', 'Seed DG5 (if bank OK)'),
+  b('nadav','2026-10-29', 1, 1, 'bpd-baseline', 'Seed DG5 (18:00) — 129 g into ~1.17 L (~10%)'),
   b('yoni', '2026-10-29', 1, 1, 'analytical', 'PSD: quick scanner test (if time)', { prop: 1 }),
 
   // ---- Week of 1 Nov ----
   b('dorin','2026-11-01', 0, 1, 'cell-line', 'Split best sub-line → +2 flasks for new bank'),
   b('dorin','2026-11-02', 0, 1, 'chemo', 'Chemo batches: TPC plating', { prop: 1 }),
-  b('dorin','2026-11-03', 0, 1, 'media-v1', '50%: last measurement → decide whether to continue'),
+  b('dorin','2026-11-03', 0, 1, 'media-v1', '50%: last measurement → decide whether to continue', { prop: 1 }),
   b('dorin','2026-11-05', 0, 1, 'chemo', 'Chemo TPC: read plates', { prop: 1 }),
 
-  b('nadav','2026-11-01', 0, 1, 'bpd-baseline', 'Define pass criteria for clean semi run', { prop: 1 }),
-  b('nadav','2026-11-01', 1, 1, 'contamination', 'Hands-on reactor clean w/ Yoni (dip tubes, filters)', { prop: 1 }),
-  b('nadav','2026-11-02', 0, 1, 'contamination', 'Autoclave indicators: large — media + harvest bottles', { prop: 1, tt: 1 }),
-  b('nadav','2026-11-03', 0, 1, 'contamination', 'Autoclave indicators: small — MF vessels', { prop: 1, tt: 1 }),
-  b('nadav','2026-11-04', 0, 1, 'contamination', 'Autoclave indicators: large — Dasgip vessels', { prop: 1, tt: 1 }),
-  b('nadav','2026-11-04', 1, 1, 'bpd-baseline', 'pH probe calibration / drift check', { prop: 1 }),
-  b('nadav','2026-11-05', 0, 1, 'cell-supply', 'Thursday bank'),
+  b('nadav','2026-11-01', 1, 1, 'bpd-baseline', '1:1 w/ Yoni: DG5 plan, bank, contamination report'),
+  b('nadav','2026-11-02', 0, 1, 'contamination', 'Revise STR14–16 contamination report: cut what we won’t do, tie findings to actions'),
+  b('nadav','2026-11-02', 1, 1, 'bpd-baseline', 'Write DG5 pass criteria (what a good semi run looks like) — before first harvest'),
+  b('nadav','2026-11-03', 0, 1, 'bpd-baseline', 'DG5 fill 1.3 → 2.0 L + glucose to Brix 3.0 (trigger Brix ≤1.5; forecast Tue)', { prop: 1 }),
+  b('nadav','2026-11-04', 1, 1, 'bpd-baseline', 'pH probe check vs offline (one-point correction rule)', { prop: 1 }),
+  b('nadav','2026-11-05', 0, 1, 'cell-supply', 'Thursday bank — count every flask, keep the best (E1–3, F1–3)'),
+  b('nadav','2026-11-05', 1, 1, 'bpd-baseline', 'DG5 first partial harvest 50% (trigger CMF >25%; forecast Thu) — watch gassing, air to overlay', { prop: 1 }),
 
   b('yoni', '2026-11-01', 0, 1, 'team', 'Technician: post job, start hiring', { prop: 1 }),
-  b('yoni', '2026-11-01', 1, 1, 'contamination', 'Hands-on reactor clean w/ Nadav → cleaning SOP', { prop: 1 }),
+  b('yoni', '2026-11-01', 1, 1, 'bpd-baseline', '1:1 w/ Nadav: DG5 plan, bank, contamination report'),
   b('yoni', '2026-11-02', 0, 2, 'bpd-baseline', 'Report: how we measure cell density now, going forward, and why', { prop: 1 }),
   b('yoni', '2026-11-03', 0, 3, 'cell-line', 'Sub-line analysis: aggregates × doubling time × pH × Brix', { prop: 1 }),
   b('yoni', '2026-11-04', 1, 1, 'cell-line', 'Line 56 vs 41 comparison graph', { prop: 1 }),
@@ -107,10 +107,11 @@ const B = [
   b('dorin','2026-11-12', 1, 1, 'cell-line', 'Cryo (optional): dissolve dried beads in Ca-free media → viability', { prop: 1 }),
 
   // ---- Week of 8 Nov ----
-  b('dorin','2026-11-08', 0, 1, 'cell-line', 'Hand ~30–39 g to Nadav for new bank'),
+  b('dorin','2026-11-08', 0, 1, 'cell-line', 'Hand sub-line cells to Nadav (comparison vs his bank)', { prop: 1 }),
 
-  b('nadav','2026-11-08', 0, 1, 'cell-line', 'Receive cells from Dorin → start own bank'),
-  b('nadav','2026-11-09', 0, 1, 'contamination', 'Blind media hold: set up (no cells)', { prop: 1 }),
+  b('nadav','2026-11-08', 0, 1, 'cell-line', 'Dorin’s sub-line → 100 mL flasks next to own bank', { prop: 1 }),
+  b('nadav','2026-11-08', 1, 1, 'bpd-baseline', 'DG5 review w/ Yoni after first harvest', { prop: 1 }),
+  b('nadav','2026-11-09', 0, 1, 'contamination', 'Blind media hold: set up (no cells) — only once the plan is agreed', { prop: 1 }),
   b('nadav','2026-11-12', 0, 1, 'cell-supply', 'Thursday bank'),
 
   b('yoni', '2026-11-08', 0, 2, 'contamination', '5S: do reference area myself + photo standard', { prop: 1 }),
@@ -123,7 +124,7 @@ const B = [
 
   // ---- Week of 15 Nov ----
 
-  b('nadav','2026-11-15', 0, 1, 'cell-line', 'Bank expansion (target ~50 g to seed)', { prop: 1 }),
+  b('nadav','2026-11-15', 0, 1, 'cell-line', 'Sub-line vs own bank: compare at 100 mL → expand for 2nd vessel', { prop: 1 }),
   b('nadav','2026-11-17', 0, 1, 'contamination', 'Blind media hold: read out', { prop: 1 }),
   b('nadav','2026-11-19', 0, 1, 'cell-supply', 'Thursday bank'),
 
@@ -159,7 +160,7 @@ B.push(b('dorin', '2026-11-25', 1, 1, 'media-v1', 'Filter vs autoclave: last Wed
 // Platforms: pb(platform, date, half, len, project, text, opts)
 const pb = (plat, date, h, len, p, t, o) => Object.assign({ plat, date, h, len, p, t }, o || {});
 const PB = [
-  pb('Dasgip DG5', '2026-10-29', 1, 26, 'bpd-baseline', 'DG5 run (if seeded) — end TBD', { prop: 1 }),
+  pb('Dasgip DG5', '2026-10-29', 1, 26, 'bpd-baseline', 'DG5 semi-continuous (Nadav’s bank) — end TBD'),
   pb('Flasks', '2026-10-25', 0, 18, 'media-v1', '50% experiment → decide 3 Nov', { prop: 1 }),
   pb('Flasks', '2026-10-25', 0, 30, 'media-v1', '3% (one group) → 9 Nov, maybe 16'),
   pb('Flasks', '2026-10-25', 0, 48, 'media-v1', 'Filter vs autoclave → 25 Nov'),
@@ -171,7 +172,9 @@ const PB = [
 
 // Not on the calendar yet: [project, name, need/blocker, status now, status with technician]
 const Q = [
-  ['bpd-baseline', 'Clean semi-continuous run (bioreactor)', 'Gated on: contamination under control + confirmed good line. Fallback if it fails: perfusion baseline, semi moves to Media V1.', 'gated', 'gated'],
+  ['contamination', 'Autoclave validation (indicators) + hands-on cleaning SOP + blind media hold', 'All of it goes ahead in parallel with DG5 (Yoni, 1 Nov). Yoni + Nadav sit down to plan, then execute. Report findings: worn harvest-bottle parts, repeated autoclaving never validated.', 'plan first', 'plan first'],
+  ['contamination', 'Replace worn harvest-bottle parts; open the bottle as little as possible', 'From the STR14–16 report: the harvest bottle is the weak point', 'no date', 'no date'],
+  ['team', 'Dashboard 2.0: only Yoni can edit — Nadav has no way to change content', 'Raised by Nadav 1 Nov. Old dashboard let anyone edit. Options: clickable editing in the page, or a planner bot that logs who changed what. Yoni sets the big plan weekly/biweekly; Nadav adjusts details.', 'open gap', 'open gap'],
   ['chemo', 'Bubble reactor 10–20 L: build → runs', 'Or leads; execution needs Nadav time', 'needs Nadav', 'on calendar 11 Nov'],
   ['bpd-opt', 'DOE: temperature deep-dive (then pH, DO)', 'Dasgip + Nadav; best temp, reversibility, product attributes', 'after baseline', 'after baseline'],
   ['media-v1', 'Glucose correction to rescue 50% (flasks)', 'A flask slot + Dorin', 'after 3 Nov', 'after 3 Nov'],
@@ -196,28 +199,30 @@ const ph = (name, s, e, o) => Object.assign({ kind: 'ph', name, s, e }, o || {})
 const ms = (name, s, o) => Object.assign({ kind: 'ms', name, s, e: s }, o || {});
 const TL = {
   'cell-line': [
-    ms('Nadav’s bank: go / no-go', '2026-10-29'),
+    ms('Nadav’s bank: GO — continue', '2026-10-29'),
     ph('Dorin expands best sub-line', '2026-11-01', '2026-11-08'),
     ph('Sub-line analysis (Yoni)', '2026-11-03', '2026-11-05', { prop: 1 }),
-    ms('Hand-off ~30–39 g to Nadav', '2026-11-08'),
-    ph('Nadav builds own bank → ~50 g to seed', '2026-11-08', '2026-11-22', { prop: 1 }),
+    ms('Dorin’s sub-line → Nadav (comparison)', '2026-11-08', { prop: 1 }),
+    ph('Sub-line vs Nadav’s bank at 100 mL', '2026-11-08', '2026-11-22', { prop: 1 }),
     ph('Cryo: reculture → beads → pre-cond → dry (Dorin)', '2026-11-04', '2026-11-12', { note: 'Drying-curve pilot not in Dorin’s plan — confirm' }),
     ms('Cryo: all lots dried', '2026-11-11'),
     ms('Gate: setup cleared (media hold passes)', '2026-11-19', { prop: 1 }),
-    ph('New line in bioreactor = clean semi run', '2026-11-23', '2026-12-10', { prop: 1, note: 'Runs into Nadav’s December absence — needs cover, or slips to January' }),
+    ph('Sub-line in 2nd vessel (do differences hold in a reactor?)', '2026-11-23', '2026-12-10', { prop: 1, note: 'Runs into Nadav’s December absence — needs cover, or slips to January' }),
     ph('Plate→liquid line: 2 flasks every Sunday (ongoing)', '2026-11-01', END),
     ms('Decide: is the new line good?', '2026-12-20', { prop: 1 })
   ],
   'bpd-baseline': [
-    ph('DG5 run (if seeded)', '2026-10-29', '2026-11-12', { prop: 1, note: 'Length not confirmed' }),
-    ms('Pass criteria defined (Nadav)', '2026-11-01', { prop: 1 }),
+    ph('DG5: grow → fill to 2 L → 50% harvests', '2026-10-29', '2026-11-12', { note: 'Counts as the first clean semi run (Yoni, 1 Nov) — if it fails → perfusion baseline' }),
+    ms('Pass criteria defined (Nadav)', '2026-11-02'),
+    ms('DG5 fill to 2 L (forecast)', '2026-11-03', { prop: 1 }),
+    ms('DG5 first 50% harvest (forecast)', '2026-11-05', { prop: 1 }),
     ms('Goal 1 closed: cell-density report', '2026-11-03', { prop: 1 }),
-    ph('Clean semi-continuous run (new line)', '2026-11-23', '2026-12-10', { prop: 1, note: 'Same run as the cell-line test' }),
+    ph('Sub-line semi run (2nd vessel)', '2026-11-23', '2026-12-10', { prop: 1, note: 'Same run as the cell-line test' }),
     ms('Decide: semi baseline or perfusion fallback', '2026-12-14', { prop: 1 })
   ],
   'contamination': [
-    ph('Hands-on clean → cleaning SOP', '2026-11-01', '2026-11-01', { prop: 1 }),
-    ph('Autoclave indicators: all load types', '2026-11-02', '2026-11-04', { prop: 1 }),
+    ms('STR14–16 report revised (Nadav)', '2026-11-02'),
+    ph('Plan: autoclave indicators + cleaning SOP (Yoni + Nadav)', '2026-11-08', '2026-11-12', { prop: 1, note: 'Moved off 1–4 Nov — plan first, dates TBD' }),
     ph('5S: reference area → others → sign-off', '2026-11-08', '2026-11-16', { prop: 1 }),
     ph('Contamination plan', '2026-11-09', '2026-11-10', { prop: 1 }),
     ph('Blind media hold', '2026-11-09', '2026-11-17', { prop: 1 }),
@@ -238,7 +243,7 @@ const TL = {
     ph('Validate ECL freeze conditions', '2026-11-16', '2026-11-16', { prop: 1, note: 'Waits on ECL’s answer' })
   ],
   'media-v1': [
-    ms('50%: last measurement → continue or stop?', '2026-11-03'),
+    ms('50%: last measurement → continue or stop?', '2026-11-03', { prop: 1, note: 'Day not confirmed — next week' }),
     ph('3% experiment (one group, Mondays)', '2026-10-25', '2026-11-09', { note: 'May run to 16 Nov' }),
     ph('Filter vs autoclave (Wednesdays)', '2026-10-25', '2026-11-25'),
     ms('Filter vs autoclave: final data', '2026-11-25')
