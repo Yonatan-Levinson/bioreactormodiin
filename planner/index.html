@@ -68,7 +68,7 @@ const B = [
   b('nadav','2026-10-28', 0, 1, 'bpd-baseline', 'STR16 stopped — contaminated'),
   b('nadav','2026-10-29', 0, 1, 'cell-line', 'Count bank + TTC with Or → GO: continue own bank'),
   b('or',   '2026-10-29', 0, 1, 'cell-line', 'Count Nadav’s bank + TTC with Nadav'),
-  b('nadav','2026-10-29', 1, 1, 'bpd-baseline', 'Seed DG5 (18:00) — 129 g into ~1.17 L (~10%)'),
+  b('nadav','2026-10-29', 1, 1, 'bpd-baseline', 'Seed DG5 (18:00) — 129 g into ~1.17 L (~10%)', { run: 'dg5' }),
   b('yoni', '2026-10-29', 1, 1, 'analytical', 'PSD: quick scanner test (if time)', { prop: 1 }),
 
   // ---- Week of 1 Nov ----
@@ -80,10 +80,10 @@ const B = [
   b('nadav','2026-11-01', 1, 1, 'bpd-baseline', '1:1 w/ Yoni: DG5 plan, bank, contamination report'),
   b('nadav','2026-11-02', 0, 1, 'contamination', 'Revise STR14–16 contamination report: cut what we won’t do, tie findings to actions'),
   b('nadav','2026-11-02', 1, 1, 'bpd-baseline', 'Write DG5 pass criteria (what a good semi run looks like) — before first harvest'),
-  b('nadav','2026-11-03', 0, 1, 'bpd-baseline', 'DG5 fill 1.3 → 2.0 L + glucose to Brix 3.0 (trigger Brix ≤1.5; forecast Tue)', { prop: 1 }),
-  b('nadav','2026-11-04', 1, 1, 'bpd-baseline', 'pH probe check vs offline (one-point correction rule)', { prop: 1 }),
+  b('nadav','2026-11-03', 0, 1, 'bpd-baseline', 'DG5 fill 1.3 → 2.0 L + glucose to Brix 3.0 (trigger Brix ≤1.5; forecast Tue)', { prop: 1, run: 'dg5' }),
+  b('nadav','2026-11-04', 1, 1, 'bpd-baseline', 'pH probe check vs offline (one-point correction rule)', { prop: 1, run: 'dg5' }),
   b('nadav','2026-11-05', 0, 1, 'cell-supply', 'Thursday bank — count every flask, keep the best (E1–3, F1–3)'),
-  b('nadav','2026-11-05', 1, 1, 'bpd-baseline', 'DG5 first partial harvest 50% (trigger CMF >25%; forecast Thu) — watch gassing, air to overlay', { prop: 1 }),
+  b('nadav','2026-11-05', 1, 1, 'bpd-baseline', 'DG5 first partial harvest 50% (trigger CMF >25%; forecast Thu) — watch gassing, air to overlay', { prop: 1, run: 'dg5' }),
 
   b('yoni', '2026-11-01', 0, 1, 'team', 'Technician: post job, start hiring', { prop: 1 }),
   b('yoni', '2026-11-01', 1, 1, 'bpd-baseline', '1:1 w/ Nadav: DG5 plan, bank, contamination report'),
@@ -110,8 +110,8 @@ const B = [
   b('dorin','2026-11-08', 0, 1, 'cell-line', 'Hand sub-line cells to Nadav (comparison vs his bank)', { prop: 1 }),
 
   b('nadav','2026-11-08', 0, 1, 'cell-line', 'Dorin’s sub-line → 100 mL flasks next to own bank', { prop: 1 }),
-  b('nadav','2026-11-08', 1, 1, 'bpd-baseline', 'DG5 review w/ Yoni after first harvest', { prop: 1 }),
-  b('nadav','2026-11-09', 0, 1, 'contamination', 'Blind media hold: set up (no cells) — only once the plan is agreed', { prop: 1 }),
+  b('nadav','2026-11-08', 1, 1, 'bpd-baseline', 'DG5 review w/ Yoni after first harvest', { prop: 1, run: 'dg5' }),
+  b('nadav','2026-11-09', 0, 1, 'contamination', 'Blind media hold: set up (no cells) — only once the plan is agreed', { prop: 1, run: 'hold' }),
   b('nadav','2026-11-12', 0, 1, 'cell-supply', 'Thursday bank'),
 
   b('yoni', '2026-11-08', 0, 2, 'contamination', '5S: do reference area myself + photo standard', { prop: 1 }),
@@ -119,13 +119,13 @@ const B = [
   b('yoni', '2026-11-10', 0, 1, 'bpd-baseline', 'pH: compare with Chemo full log', { prop: 1 }),
   b('yoni', '2026-11-10', 1, 2, 'analytical', 'PSD: camera method vs Mastersizer', { prop: 1 }),
 
-  b('or',   '2026-11-08', 0, 1, 'functionality', 'Non-viability study: plate powder', { prop: 1 }),
+  b('or',   '2026-11-08', 0, 1, 'gras', 'Non-viability study: plate powder', { prop: 1 }),
   b('or',   '2026-11-10', 0, 1, 'chemo', 'Bubble reactor: parts + build plan', { prop: 1 }),
 
   // ---- Week of 15 Nov ----
 
   b('nadav','2026-11-15', 0, 1, 'cell-line', 'Sub-line vs own bank: compare at 100 mL → expand for 2nd vessel', { prop: 1 }),
-  b('nadav','2026-11-17', 0, 1, 'contamination', 'Blind media hold: read out', { prop: 1 }),
+  b('nadav','2026-11-17', 0, 1, 'contamination', 'Blind media hold: read out', { prop: 1, run: 'hold' }),
   b('nadav','2026-11-19', 0, 1, 'cell-supply', 'Thursday bank'),
 
   b('yoni', '2026-11-15', 0, 2, 'contamination', '5S: others do remaining areas — Yoni signs off each', { prop: 1 }),
@@ -160,14 +160,12 @@ B.push(b('dorin', '2026-11-25', 1, 1, 'media-v1', 'Filter vs autoclave: last Wed
 // Platforms: pb(platform, date, half, len, project, text, opts)
 const pb = (plat, date, h, len, p, t, o) => Object.assign({ plat, date, h, len, p, t }, o || {});
 const PB = [
-  pb('Dasgip DG5', '2026-10-29', 1, 26, 'bpd-baseline', 'DG5 semi-continuous (Nadav’s bank) — end TBD'),
   pb('Flasks', '2026-10-25', 0, 18, 'media-v1', '50% experiment → decide 3 Nov', { prop: 1 }),
   pb('Flasks', '2026-10-25', 0, 30, 'media-v1', '3% (one group) → 9 Nov, maybe 16'),
   pb('Flasks', '2026-10-25', 0, 48, 'media-v1', 'Filter vs autoclave → 25 Nov'),
   pb('Flasks', '2026-11-01', 0, 999, 'cell-line', 'New line: 2 flasks / week (ongoing)'),
   pb('Flasks', '2026-11-04', 0, 6, 'cell-line', 'Cryo: recultured cells (4 °C → Wed)'),
-  pb('Flasks', '2026-11-08', 1, 7, 'cell-line', 'Cryo: 8 sucrose lots'),
-  pb('MF (TBD)', '2026-11-09', 0, 14, 'contamination', 'Blind media hold', { prop: 1 })
+  pb('Flasks', '2026-11-08', 1, 7, 'cell-line', 'Cryo: 8 sucrose lots')
 ];
 
 // Not on the calendar yet: [project, name, need/blocker, status now, status with technician]
@@ -249,8 +247,10 @@ const TL = {
     ms('Filter vs autoclave: final data', '2026-11-25')
   ],
   'functionality': [
-    ms('In vitro digestion done (Dorin)', '2026-10-25'),
-    ph('Non-viability study (Or)', '2026-11-08', '2026-11-12', { prop: 1 })
+    ms('In vitro digestion done (Dorin)', '2026-10-25')
+  ],
+  'gras': [
+    ph('Non-viability study on powders (Or)', '2026-11-08', '2026-11-12', { prop: 1 })
   ],
   'team': [
     ph('Technician: hire', '2026-11-01', '2026-11-30', { prop: 1 }),
@@ -258,6 +258,86 @@ const TL = {
     ph('Nadav away', '2026-12-01', '2026-12-31', { prop: 1, note: 'Exact dates TBD' })
   ]
 };
+
+
+// ---- Project overview cards (Projects view) ----
+// Rewritten from Yoni's 3 Nov notes. goals = what "done" means; plan = [step, rough duration]; durations are estimates.
+const OV = {
+  'cell-supply': { owner: 'Yoni', who: 'Nadav, Dorin', horizon: 'Ongoing', status: 'Running',
+    goals: ['Steady supply of healthy cells for flask work and bioreactor runs'],
+    plan: [['Weekly flask banks — Dorin (Sun), Nadav (Thu); count every flask, keep the best', 'weekly'], ['Bioreactor supply runs once the baseline settles semi-continuous vs perfusion', 'from ~Dec']],
+    next: 'Keep the banks going' },
+  'cell-line': { owner: 'Yoni', who: 'Dorin, Nadav, Or', horizon: '~2 months (to late Dec)', status: 'Active — top priority',
+    goals: ['Recover the "old phenotype": shorter, more consistent doubling time; lower end-of-cycle pH and Brix; smaller aggregates', 'Remove the single-line risk: cryo bank and a fresh plate→liquid line'],
+    plan: [['Phase 1, flasks: sub-lines vs Nadav’s bank + sub-line analysis', '3–4 wks (Nov)'], ['Phase 2, bioreactor: best sub-line in a second vessel', '~3 wks (late Nov–Dec)'], ['Backup: first cryo round; plate→liquid line, 2 flasks a week', 'Nov · ongoing'], ['Decide: is the new line good?', 'late Dec']],
+    next: 'Sub-line into Nadav’s flasks (~8 Nov); cryo drying 8–11 Nov' },
+  'bpd-baseline': { owner: 'Yoni', who: 'Nadav', horizon: '~6 weeks (to mid-Dec)', status: 'Goal 1 done · goal 3 in test',
+    goals: ['Reliable growth measurement — achieved (full-vessel CMF); report still to write', 'Antifoam — set aside, we live with foam (now its own project)', 'Cell-supply process: semi-continuous, or fall back to perfusion'],
+    plan: [['Write the growth-measurement report', 'days — now'], ['DG5: semi-continuous run with 50% partial harvests', '~2 wks (Nov)'], ['Decide semi-continuous or perfusion; if perfusion, semi work moves to Media V1', 'mid-Dec']],
+    next: 'DG5 fill + first harvest this week; growth report' },
+  'contamination': { owner: 'Yoni', who: 'Nadav; everyone for 5S', horizon: '2–3 months, spread out', status: 'Planning',
+    goals: ['Contamination-prevention plan rolled out and followed', '5S in place and kept up'],
+    plan: [['5S: sort, label, maintain (extra storage already in)', '1 long day + upkeep'], ['Autoclave validation', '~1–2 wks'], ['Bioreactor cleaning protocol + validation', '~2–3 wks'], ['Media-integrity (blind hold) runs', '~1–2 wks / round'], ['Lab and BSC redesign', 'Dec renovation window'], ['Rewrite and enforce PPE and cleaning protocols', 'ongoing']],
+    next: 'Yoni + Nadav plan the validation work; 5S reference area' },
+  'analytical': { owner: 'Yoni', who: 'Dorin, Nadav (routine samples)', horizon: '~1–2 months', status: 'Active',
+    goals: ['PSD: routine aggregate-size measurement by imaging', 'TTC: quantitative viability', 'FDA: is it feasible for us?'],
+    plan: [['PSD: camera rig → measure → compare with Mastersizer → lock protocol', '2–3 wks'], ['TTC: calibration curve', 'a few days wet work'], ['FDA: first feasibility test', '~1 wk, after PSD + TTC']],
+    next: 'Build the PSD rig' },
+  'media-v1': { owner: 'Yoni', who: 'Dorin, Nadav', horizon: '~2–3 months', status: 'Active',
+    goals: ['Media and feeding conditions that support the widest range of growth cycles, with proven operating boundaries', 'Know what the cells consume and produce (spent-media analysis)'],
+    plan: [['Finish running flasks (3%, filter vs autoclave)', 'to late Nov'], ['Repeat the 50% flask test with glucose correction — does it rescue growth?', '3–4 wks'], ['Glucose correction on media feeds and partial harvests in the bioreactor', 'with BPD runs'], ['Why the 50% effect doesn’t show in Chemo partial-harvest data', 'desk, ~1 wk'], ['Spent-media analysis: a few repeats → findings + process recommendations', '1–2 months']],
+    next: '50% read-out → glucose-correction repeat' },
+  'gras': { owner: 'Shimrit', who: 'Or, Yoni (gaps as assigned)', horizon: 'Dossier target end Dec', status: 'Ad hoc support',
+    goals: ['Dossier submitted; R&D closes gaps as they come up'],
+    plan: [['Non-viability study on the powders (Or)', '~1–2 wks'], ['Phenolics quantification with Avi Shpigelman — confirm what it is for', 'TBD'], ['Trace the source of lactose, lead etc. in commercial material', 'TBD']],
+    next: 'Confirm the purpose of the Avi S. work' },
+  'drying-dsp': { owner: 'Or', who: 'Or, Yoni', horizon: '~1–2 months (reports + plan)', status: 'Active',
+    goals: ['In-house lyo: baseline protocol for a defined sample load', 'What drives colour and quality of dewatered biomass — and how long wet biomass can wait', 'Support ECL / Italy on scalable wash, dewatering and drying'],
+    plan: [['Write up the in-house lyo runs so far', 'now — most urgent'], ['Design a proper post-dewatering quality study (first quick test inconclusive)', '2–4 wks'], ['Scale-down ideas for ECL / Italy, e.g. nutsche cake thickness vs air flow', 'TBD']],
+    next: 'Lyo reports' },
+  'chemo': { owner: 'Or', who: 'Nadav (share TBD)', horizon: 'TBD — set dates with Or', status: 'Scoping',
+    goals: ['A working alternative to the 250 L pilot step'],
+    plan: [['Aran bag stream', 'TBD'], ['Prefab carboy (FOXX) — Or', 'TBD'], ['Improvised carboy — Nadav or Or', 'TBD'], ['Agree scope, dates and Nadav’s share with Or', 'now']],
+    next: 'Talk to Or: scope, dates, who does what' },
+  'functionality': { owner: 'TBD', who: 'Dorin, Or', horizon: 'TBD', status: 'Ideas stage',
+    goals: ['Evidence for product claims beyond GRAS (marketing)'],
+    plan: [['GLP-1 idea: first test', 'TBD'], ['In vitro digestion, short vs long gastric stage — effect on TPC etc.', 'TBD'], ['Maybe: TPC on all commercial samples', 'TBD']],
+    next: 'Pick an owner and a first experiment' },
+  'proc-val': { owner: 'Yoni', who: '—', horizon: 'Ask now; work after baseline', status: 'Open question',
+    goals: ['Know whether we need defined process limits (as pharma or CCC would), and set them if so'],
+    plan: [['Ask ATOVA directly whether the dossier needs process limits', 'now'], ['If yes: parameters and ranges from the DOE + metabolomics', 'after baseline']],
+    next: 'Put the question to ATOVA' },
+  'bpd-opt': { owner: 'Yoni', who: 'Nadav', horizon: '~2–3 months, after baseline', status: 'Not started',
+    goals: ['Fastest achievable growth rate', 'Limits for pH, DO, temperature, agitation', 'Is the temperature effect reversible?'],
+    plan: [['Dasgip DOE series: temperature first, then pH, DO, agitation', '~1 wk / run + analysis'], ['Optimized scale-up runs', '~2 wks each']],
+    next: 'Waits for the clean baseline' },
+  'media-v2': { owner: 'Yoni', who: 'Dorin, Or', horizon: '~3–4 months', status: 'Results to review',
+    goals: ['Reduce or remove problem components (hormones, metals, nitrate)', 'Optimize the media from spent-media results'],
+    plan: [['Review hormone-reduction results as a team, with Or → next step', '1 meeting — now'], ['Schedule metal and nitrate reduction experiments', '3–4 wks each'], ['Feed in spent-media results from Media V1', 'later']],
+    next: 'Hormone results review with Or' },
+  'antifoam': { owner: 'Yoni', who: '—', horizon: 'Weeks to regroup; tests TBD', status: 'Stuck',
+    goals: ['No foaming in the bioreactor without harming the cells'],
+    plan: [['Check all past work is captured in reports', '~1 h+'], ['Call Munzing about collaborating', 'now'], ['Find at least one other supplier', '2–4 wks']],
+    next: 'Munzing call' },
+  'new-lines': { owner: 'TBD', who: 'TBD', horizon: 'TBD', status: 'No owner',
+    goals: ['Tomato back in suspension, with an initial bioreactor process', 'Citrus in suspension'],
+    plan: [['Write up what exists: tomato (reportedly worked), citrus (failed; Excel data only)', '~1 wk'], ['Then decide owner and start', '—']],
+    next: 'Reports on both' },
+  'team': { owner: 'Yoni', who: '—', horizon: '~6 wks to an onboarded tech', status: 'Active',
+    goals: ['Technician hired and onboarded', 'Cover for Nadav’s December absence'],
+    plan: [['Review and approve the job description', 'now'], ['Post and hire', '~4 wks'], ['Onboarding', '~2 wks']],
+    next: 'Approve the JD' }
+};
+
+// ---- Bioreactor vessels (Platforms view + vessel filter) ----
+// v = vessel, or 'TBC' until assigned. fam = which kind it needs (shown while TBC).
+// Calendar blocks link to a run with {run:'id'}, so assigning a vessel here updates everything.
+const VESSELS = ['MF1', 'MF2', 'MF3', 'DG1', 'DG2', 'DG3', 'DG4'];
+const VR = [
+  { id: 'dg5',  v: 'TBC', fam: 'Dasgip', s: '2026-10-29', e: '2026-11-12', p: 'bpd-baseline', t: 'DG5 semi-continuous (Nadav’s bank) — end TBD' },
+  { id: 'hold', v: 'TBC', fam: 'MF',     s: '2026-11-09', e: '2026-11-17', p: 'contamination', t: 'Blind media hold', prop: 1 },
+  { id: 'sub2', v: 'TBC', fam: 'any',    s: '2026-11-23', e: '2026-12-10', p: 'cell-line', t: 'Sub-line semi run (2nd vessel)', prop: 1 }
+];
 
 /* ================= ENGINE ================= */
 const DAYN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu'];
@@ -276,8 +356,9 @@ const todayIso = (() => { const d = new Date(); return d.getFullYear() + '-' + S
 const TODAY = IDX[todayIso] ?? -1;
 
 let state = {};
+try { const v0 = localStorage.getItem('novella_planner_view'); if (v0) state.view = v0; } catch (e) {}
 const H = [];
-function setState(p) { state = Object.assign({}, state, p); render(); }
+function setState(p) { state = Object.assign({}, state, p); if (p.view) { try { localStorage.setItem('novella_planner_view', p.view); } catch (e) {} } render(); }
 function on(fn) { H.push(fn); return 'H[' + (H.length - 1) + ']()'; }
 function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 const fmt = (x) => (Math.round(x * 2) / 2).toString();
@@ -294,6 +375,107 @@ function pack(list) {
   return rows.length;
 }
 
+
+const CURW = Math.max(0, Math.floor((Date.parse(todayIso + 'T12:00:00') - Date.parse(START + 'T12:00:00')) / (7 * 864e5)));
+
+const vesOf = (id) => { const r = VR.find((x) => x.id === id); return r ? r.v : null; };
+function ganttAxis(LBL) {
+  const t0 = Date.parse(START + 'T00:00:00'), t1 = Date.parse(END + 'T00:00:00') + 864e5, span = t1 - t0;
+  const pct = (iso, endOfDay) => ((Date.parse(iso + 'T00:00:00') + (endOfDay ? 864e5 : 0) - t0) / span * 100);
+  let h = '<div style="display:grid;grid-template-columns:' + LBL + 'px 1fr;align-items:end"><div></div><div style="position:relative;height:26px;border-bottom:1px solid #E1E2DC">';
+  const d = new Date(START + 'T12:00:00'); d.setDate(1); let first = true;
+  while (d.getTime() < t1) {
+    const iso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-01';
+    const nx = new Date(d); nx.setMonth(nx.getMonth() + 1);
+    const visDays = (Math.min(nx.getTime(), t1) - Math.max(d.getTime(), t0)) / 864e5;
+    const lbl = visDays < 12 ? '' : MON[d.getMonth()] + (d.getMonth() === 0 || first ? ' ' + d.getFullYear() : '');
+    if (lbl) first = false;
+    h += '<div style="position:absolute;left:' + Math.max(0, pct(iso)) + '%;top:0;bottom:0;border-left:1px solid #D5D6D0;padding-left:6px;font-weight:700;font-size:12.5px;white-space:nowrap">' + lbl + '</div>';
+    d.setMonth(d.getMonth() + 1);
+  }
+  h += '</div></div>';
+  const tp = (todayIso >= START && todayIso <= END) ? pct(todayIso) + (100 / (span / 864e5)) / 2 : null;
+  return { h, pct, tp, dayW: 100 / (span / 864e5) };
+}
+
+function renderOverview(sel) {
+  const keys = Object.keys(P).filter((k) => !sel || k === sel);
+  const mono = 'font-family:\'IBM Plex Mono\',monospace;';
+  let h = '';
+  THEMES.forEach(([n, label]) => {
+    const ks = keys.filter((k) => P[k].theme === n);
+    if (!ks.length) return;
+    h += '<div style="' + mono + 'font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:#5F6368;margin:6px 0 -6px">' + esc(label) + '</div>';
+    h += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px">';
+    ks.forEach((k) => {
+      const o = OV[k] || {}, c = P[k].c;
+      h += '<article style="background:#FFFFFF;border:1px solid #E1E2DC;border-top:4px solid ' + c + ';border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;min-width:0">';
+      h += '<div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><div style="font-weight:700;font-size:14.5px;line-height:1.3">' + esc(P[k].name) + '</div>';
+      h += '<span style="flex:none;' + mono + 'font-size:10.5px;padding:2px 7px;border-radius:4px;background:' + c + '14;color:' + c + ';white-space:nowrap">' + esc(o.status || '') + '</span></div>';
+      h += '<div style="font-size:11.5px;color:#4A4F55;display:flex;flex-wrap:wrap;gap:4px 12px"><span><b style="color:#1B1D1F">Owner</b> ' + esc(o.owner || '—') + '</span><span><b style="color:#1B1D1F">With</b> ' + esc(o.who || '—') + '</span><span><b style="color:#1B1D1F">Horizon</b> ' + esc(o.horizon || '—') + '</span></div>';
+      if (o.goals) h += '<div><div style="' + mono + 'font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#6B7075;margin-bottom:3px">Objectives</div><ul style="margin:0;padding-left:18px;line-height:1.45;font-size:12.5px">' + o.goals.map((g) => '<li>' + esc(g) + '</li>').join('') + '</ul></div>';
+      if (o.plan) {
+        h += '<div><div style="' + mono + 'font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#6B7075;margin-bottom:3px">Plan</div>';
+        o.plan.forEach(([s, d]) => { h += '<div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:3px 0;border-top:1px solid #F0F0EC;font-size:12.5px;line-height:1.4"><span>' + esc(s) + '</span><span style="' + mono + 'font-size:11px;color:#5F6368;text-align:right;max-width:120px">' + esc(d) + '</span></div>'; });
+        h += '</div>';
+      }
+      h += '<div style="margin-top:auto;display:flex;justify-content:space-between;gap:10px;align-items:center;padding-top:6px;border-top:1px solid #E1E2DC"><span style="font-size:12px"><b>Next:</b> ' + esc(o.next || '—') + '</span>';
+      h += '<button onclick="' + on(() => setState({ sel: k, view: 'tl' })) + '" style="flex:none;border:1px solid #C9CBC4;background:#FFFFFF;border-radius:6px;padding:4px 9px;cursor:pointer;font-size:11.5px">Timeline →</button></div>';
+      h += '</article>';
+    });
+    h += '</div>';
+  });
+  h += '<div style="font-size:11.5px;color:#6B7075">Durations are rough estimates (weeks/months). Day-to-day work lives in Calendar.</div>';
+  return h;
+}
+
+function renderPlatforms(sel) {
+  const LBL = 170, ax = ganttAxis(LBL), mono = 'font-family:\'IBM Plex Mono\',monospace;';
+  let h = '<section style="background:#FFFFFF;border:1px solid #E1E2DC;border-radius:12px;overflow-x:auto"><div style="min-width:1000px;padding:10px 12px 14px">' + ax.h;
+  const lanes = VESSELS.concat(VR.some((r) => r.v === 'TBC') ? ['TBC'] : []);
+  lanes.forEach((v, i) => {
+    const runs = VR.filter((r) => r.v === v), tbc = v === 'TBC';
+    if (i === 3 || tbc) h += '<div style="height:8px"></div>';
+    h += '<div style="display:grid;grid-template-columns:' + LBL + 'px 1fr;align-items:center;min-height:34px;border-top:1px solid #EEEEEA">';
+    h += '<div style="padding:4px 10px 4px 4px;font-weight:700;font-size:13px' + (tbc ? ';color:#9B1C1C' : '') + '">' + (tbc ? 'Vessel not assigned' : esc(v)) + '</div><div style="position:relative;height:100%;min-height:34px">';
+    if (ax.tp !== null) h += '<div style="position:absolute;left:' + ax.tp + '%;top:0;bottom:0;border-left:2px solid #E0A526"></div>';
+    runs.forEach((r) => {
+      const c = P[r.p].c, l = ax.pct(r.s), w = Math.max(ax.pct(r.e, 1) - l, 0.6), dim = sel && r.p !== sel;
+      const lab = r.t + (tbc ? ' · needs ' + r.fam : '');
+      h += '<div title="' + esc(lab + ' — ' + r.s + ' → ' + r.e + (r.prop ? ' (proposed)' : '')) + '" style="position:absolute;left:' + l + '%;width:' + w + '%;top:5px;bottom:5px;border-radius:5px;background:' + c + ';opacity:' + (dim ? .2 : 1) + ';color:#FFFFFF;font-size:10.5px;font-weight:600;padding:0 6px;display:flex;align-items:center;overflow:hidden;white-space:nowrap;' + (r.prop ? 'outline:2px dashed rgba(255,255,255,.85);outline-offset:-4px;' : '') + '">' + esc(lab) + '</div>';
+    });
+    h += '</div></div>';
+  });
+  h += '</div></section>';
+
+  const months = []; { const d = new Date(START + 'T12:00:00'); d.setDate(1); while (d.getTime() <= Date.parse(END)) { months.push([d.getFullYear(), d.getMonth()]); d.setMonth(d.getMonth() + 1); } }
+  const used = (v, y, m) => {
+    const z = new Date(y, m + 1, 0, 12); let tot = 0, conf = 0, prop = 0;
+    for (const d = new Date(y, m, 1, 12); d <= z; d.setDate(d.getDate() + 1)) {
+      const iso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      if (iso < START || iso > END) continue; tot++;
+      const hit = VR.filter((r) => r.v === v && r.s <= iso && iso <= r.e);
+      if (hit.some((r) => !r.prop)) conf++; else if (hit.length) prop++;
+    }
+    return { tot, conf, prop };
+  };
+  h += '<section style="background:#FFFFFF;border:1px solid #E1E2DC;border-radius:12px;padding:14px 16px;overflow-x:auto"><h2 style="margin:0 0 4px;font-size:16px">Utilization by month</h2><p style="margin:0 0 10px;font-size:12px;color:#5F6368">Share of calendar days each vessel is booked: confirmed, then +proposed in grey.</p>';
+  h += '<table style="border-collapse:collapse;font-size:12.5px;min-width:560px"><tr><th style="text-align:left;padding:4px 10px 4px 0">Vessel</th>' + months.map(([y, m]) => '<th style="text-align:right;padding:4px 10px;' + mono + 'font-weight:500">' + MON[m] + '</th>').join('') + '</tr>';
+  let tCap = 0, tConf = 0, tProp = 0;
+  VESSELS.forEach((v) => {
+    h += '<tr style="border-top:1px solid #EEEEEA"><td style="padding:5px 10px 5px 0;font-weight:700">' + v + '</td>';
+    months.forEach(([y, m]) => {
+      const u = used(v, y, m); tCap += u.tot; tConf += u.conf; tProp += u.prop;
+      const pc = u.tot ? Math.round(u.conf / u.tot * 100) : 0, pp = u.tot ? Math.round(u.prop / u.tot * 100) : 0;
+      h += '<td style="text-align:right;padding:5px 10px;' + mono + (pc ? 'font-weight:600' : 'color:#9AA0A6') + '">' + pc + '%' + (pp ? '<span style="color:#9AA0A6;font-weight:400"> +' + pp + '</span>' : '') + '</td>';
+    });
+    h += '</tr>';
+  });
+  h += '</table>';
+  const nT = VR.filter((r) => r.v === 'TBC').length;
+  h += '<p style="margin:10px 0 0;font-size:12px;color:#4A4F55">All vessels, whole horizon: <b>' + Math.round(tConf / tCap * 100) + '%</b> confirmed, +' + Math.round(tProp / tCap * 100) + '% proposed.' + (nT ? ' <span style="color:#9B1C1C">' + nT + ' run' + (nT > 1 ? 's' : '') + ' not yet assigned to a vessel — not counted above.</span>' : '') + '</p></section>';
+  return h;
+}
 
 function renderTimeline(sel) {
   const t0 = Date.parse(START + 'T00:00:00'), t1 = Date.parse(END + 'T00:00:00') + 864e5, span = t1 - t0;
@@ -326,6 +508,16 @@ function renderTimeline(sel) {
         h += '<div style="display:grid;grid-template-columns:' + LBL + 'px 1fr"><div style="padding:2px 0 8px 20px;font-size:11.5px;color:#6B7075">No plan yet</div><div></div></div>';
         return;
       }
+      if (!sel) {
+        h += '<div style="display:grid;grid-template-columns:' + LBL + 'px 1fr;align-items:center;min-height:28px"><div style="padding:0 12px 6px 20px"><button onclick="' + on(() => setState({ sel: k })) + '" style="border:0;background:none;padding:0;color:#23699A;cursor:pointer;font-size:11.5px">' + rows.length + (rows.length === 1 ? ' item' : ' items') + ' — open plan →</button></div><div style="position:relative;height:100%;min-height:28px">';
+        if (tp !== null) h += '<div style="position:absolute;left:' + tp + '%;top:0;bottom:0;border-left:2px solid #E0A526;z-index:0"></div>';
+        rows.forEach((r) => {
+          if (r.kind === 'ms') h += '<div title="' + esc(r.name + ' — ' + r.s) + '" style="position:absolute;left:calc(' + (pct(r.s) + (100 / (span / 864e5)) / 2) + '% - 6px);top:50%;width:10px;height:10px;margin-top:-5px;transform:rotate(45deg);background:' + (r.prop ? '#FFFFFF' : c) + ';border:2px solid ' + c + ';box-sizing:border-box;z-index:2"></div>';
+          else { const l = pct(r.s), w = Math.max(pct(r.e, 1) - l, 0.6); h += '<div title="' + esc(r.name + ' — ' + r.s + ' → ' + r.e) + '" style="position:absolute;left:' + l + '%;width:' + w + '%;top:9px;bottom:9px;border-radius:4px;background:' + c + ';opacity:' + (r.prop ? .35 : .6) + ';z-index:1"></div>'; }
+        });
+        h += '</div></div>';
+        return;
+      }
       rows.forEach((r) => {
         h += '<div style="display:grid;grid-template-columns:' + LBL + 'px 1fr;align-items:center;min-height:30px">';
         h += '<div style="padding:3px 12px 3px 20px;font-size:12px;line-height:1.35"><span' + (r.prop ? ' style="color:#3F444A"' : ' style="font-weight:600"') + '>' + esc(r.name) + '</span>' + (r.note ? '<div style="font-size:11px;color:#9B1C1C;margin-top:1px">' + esc(r.note) + '</div>' : '') + '</div>';
@@ -349,11 +541,13 @@ function renderTimeline(sel) {
 function render() {
   H.length = 0;
   const sel = state.sel || null, tech = !!state.tech, who = state.who || null;
-  const platOn = !!state.plat, routineOn = !!state.routine, loadOn = !!state.load, tlv = state.view === 'tl';
+  const platOn = !!state.plat, routineOn = !!state.routine, loadOn = !!state.load, view = state.view || 'ov', tlv = view === 'tl', cal = view === 'cal', ves = state.ves || null;
 
   let blocks = B.filter((x) => (x.lane === 'tech' ? tech : !(tech && x.tt)));
   if (who) blocks = blocks.filter((x) => x.lane === who);
-  const bars = PB;
+  if (ves) blocks = blocks.filter((x) => x.run && vesOf(x.run) === ves);
+  const vbars = VR.map((r) => ({ plat: r.v === 'TBC' ? (r.fam === 'any' ? 'Vessel TBC' : r.fam + ' (vessel TBC)') : r.v, v: r.v, date: r.s, h: 0, len: (IDX[r.e] != null && IDX[r.s] != null) ? (IDX[r.e] - IDX[r.s]) * 2 + 2 : 2, p: r.p, t: r.t, prop: r.prop }));
+  const bars = ves ? vbars.filter((x) => x.v === ves) : PB.concat(vbars);
 
   const seg = (on1, first) => 'border:0;' + (first ? '' : 'border-left:1px solid #E1E2DC;') + 'padding:0 14px;min-height:36px;cursor:pointer;' + (on1 ? 'background:#1B1D1F;color:#FFFFFF;font-weight:600;' : 'background:#FFFFFF;color:#1B1D1F;');
   const chip = (on1, c) => 'min-height:36px;padding:0 14px;border-radius:999px;cursor:pointer;font-size:12.5px;display:inline-flex;align-items:center;gap:7px;border:1px solid ' + (on1 ? (c || '#1B1D1F') : '#C9CBC4') + ';background:' + (on1 ? (c || '#1B1D1F') : '#FFFFFF') + ';color:' + (on1 ? '#FFFFFF' : '#1B1D1F') + ';font-weight:' + (on1 ? 600 : 400) + ';';
@@ -365,21 +559,22 @@ function render() {
   h += '<h1 style="margin:4px 0 0;font-size:26px;font-weight:700;letter-spacing:-.01em">Who is doing what, when</h1></div>';
   h += '<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">';
   h += '<div style="display:flex;border:1px solid #C9CBC4;border-radius:8px;overflow:hidden;background:#FFFFFF">';
-  h += '<button onclick="' + on(() => setState({ view: 'cal' })) + '" style="' + seg(!tlv, true) + '">Calendar</button>';
-  h += '<button onclick="' + on(() => setState({ view: 'tl' })) + '" style="' + seg(tlv, false) + '">Timeline</button></div>';
-  if (!tlv) {
+  [['ov', 'Projects'], ['cal', 'Calendar'], ['tl', 'Timeline'], ['pl', 'Platforms']].forEach(([v, l], i) => { h += '<button onclick="' + on(() => setState({ view: v })) + '" style="' + seg(view === v, i === 0) + '">' + l + '</button>'; });
+  h += '</div>';
+  if (cal) {
   h += '<button onclick="' + on(() => { const el = document.getElementById('wk' + Math.max(0, Math.floor(TODAY / 5))); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }) + '" style="' + chip(false) + '">Today</button>';
   h += '<div style="display:flex;border:1px solid #C9CBC4;border-radius:8px;overflow:hidden;background:#FFFFFF">';
   h += '<button onclick="' + on(() => setState({ tech: false })) + '" style="' + seg(!tech, true) + '">Current team</button>';
   h += '<button onclick="' + on(() => setState({ tech: true })) + '" style="' + seg(tech, false) + '">+ Technician</button></div>';
-  h += '<button onclick="' + on(() => setState({ plat: !platOn })) + '" aria-pressed="' + platOn + '" style="' + chip(platOn) + '">Platforms</button>';
+  h += '<button onclick="' + on(() => setState({ plat: !platOn })) + '" aria-pressed="' + platOn + '" style="' + chip(platOn) + '">Equipment strip</button>';
+  h += '<button onclick="' + on(() => setState({ past: !state.past })) + '" aria-pressed="' + !!state.past + '" style="' + chip(!!state.past) + '">Past weeks</button>';
   h += '<button onclick="' + on(() => setState({ routine: !routineOn })) + '" aria-pressed="' + routineOn + '" style="' + chip(routineOn) + '">Routine</button>';
   h += '<button onclick="' + on(() => setState({ load: !loadOn })) + '" aria-pressed="' + loadOn + '" style="' + chip(loadOn) + '">Load</button>';
   }
   h += '</div></header>';
 
   // person filter row
-  if (!tlv) {
+  if (cal) {
   h += '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px">';
   h += '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#5F6368;margin-right:4px">Show</span>';
   h += '<button onclick="' + on(() => setState({ who: null })) + '" aria-pressed="' + !who + '" style="' + chip(!who) + '">Everyone</button>';
@@ -389,7 +584,11 @@ function render() {
   });
   h += '<span style="margin-left:auto;display:inline-flex;align-items:center;gap:8px;font-size:12px;color:#4A4F55"><span style="display:inline-block;width:34px;height:18px;border-radius:5px;background:#5F6368;outline:2px dashed rgba(255,255,255,.85);outline-offset:-4px"></span>dashed = proposed, not yet confirmed</span>';
   h += '</div>';
-  } else h += '<div style="margin-bottom:16px;font-size:12.5px;color:#4A4F55">Project phases and milestones. Pick a project on the left to see just its plan; dashed = proposed.</div>';
+  h += '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:-8px 0 16px">';
+  h += '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#5F6368;margin-right:4px">Vessel</span>';
+  VESSELS.concat(['TBC']).forEach((v) => { const onv = ves === v, n = VR.filter((r) => r.v === v).length; h += '<button onclick="' + on(() => setState({ ves: onv ? null : v })) + '" aria-pressed="' + onv + '" style="' + chip(onv) + (n ? '' : 'opacity:.55;') + '">' + (v === 'TBC' ? 'Not assigned' : v) + '</button>'; });
+  h += '</div>';
+  } else h += '<div style="margin-bottom:16px;font-size:12.5px;color:#4A4F55">' + ({ ov: 'Goals and the high-level plan for each project. Pick one on the left to focus.', tl: 'Each project in one line. Click a project for its phases and milestones; dashed = proposed.', pl: 'What each bioreactor vessel is booked for, and how busy it is.' })[view] + '</div>';
 
   // layout
   h += '<div style="display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start">';
@@ -405,8 +604,10 @@ function render() {
   });
   h += '</aside><main style="flex:999 1 640px;min-width:0;display:flex;flex-direction:column;gap:16px">';
 
-  if (tlv) h += renderTimeline(sel);
-  else for (let w = 0; w < NWEEKS; w++) {
+  if (view === 'ov') h += renderOverview(sel);
+  else if (tlv) h += renderTimeline(sel);
+  else if (view === 'pl') h += renderPlatforms(sel);
+  else for (let w = state.past ? 0 : CURW; w < NWEEKS; w++) {
     const lo = w * 10, hi = lo + 10;
     const items = [];
     blocks.forEach((x) => {
@@ -416,6 +617,7 @@ function render() {
     items.sort((p, q) => p.a - q.a || q.len - p.len);
     if (routineOn) for (let d = 0; d < 5; d++) ['nadav', 'dorin'].filter((k) => !who || who === k).forEach((k) => items.push({ kind: 'r', k, a: d * 2, len: 2 }));
     const nRows = Math.max(1, pack(items));
+    if (!items.length && !platOn) { h += '<div id="wk' + w + '" style="scroll-margin-top:12px;padding:6px 12px;border:1px dashed #D5D6D0;border-radius:10px;font-size:12px;color:#6B7075">Week of ' + DAYS[w * 5].date + ' — nothing scheduled</div>'; continue; }
 
     h += '<section id="wk' + w + '" style="scroll-margin-top:12px;background:#FFFFFF;border:1px solid #E1E2DC;border-radius:12px;overflow-x:auto"><div style="min-width:1000px;padding:10px 12px 12px">';
     h += '<div style="display:grid;grid-template-columns:repeat(10,minmax(0,1fr));grid-template-rows:auto auto">';
@@ -470,6 +672,7 @@ function render() {
     h += '</div></section>';
   }
 
+  if (cal) {
   // queue
   h += '<section style="background:#FFFFFF;border:1px solid #E1E2DC;border-radius:12px;padding:16px 18px">';
   h += '<h2 style="margin:0;font-size:17px">' + (tech ? 'With a technician: what moves' : 'Not on the calendar yet') + '</h2>';
@@ -480,7 +683,9 @@ function render() {
     h += '<span style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-weight:600">' + esc(name) + '</span><span style="font-size:11.5px;color:#5F6368;line-height:1.45">' + esc(need) + '</span></span>';
     h += '<span style="text-align:right;font-family:\'IBM Plex Mono\',monospace;font-size:11.5px;padding:2px 6px;border-radius:4px;justify-self:end;' + (good ? 'background:#E3F2E8;color:#1D5E36;' : red ? 'background:#FDE3E3;color:#9B1C1C;' : 'background:#EEEEEA;color:#3F444A;') + '">' + esc(v) + '</span></div>';
   });
-  h += '</section></main></div></div>';
+  h += '</section>';
+  }
+  h += '</main></div></div>';
   document.getElementById('app').innerHTML = h;
 }
 render();
