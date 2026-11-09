@@ -260,15 +260,21 @@ function renderTimeline(sel) {
 
 /* ================= SYNC (Google Sheet via Apps Script) ================= */
 const SYNC_URL = 'https://script.google.com/macros/s/AKfycbxTztbaCbJcSNQXs0NOU6vpHgWZr8JIqVwR1521uq4PRwvuGz6unBV9EEH4BrhwzPlW/exec';
-const SYNC = { key: null, role: null, who: null, rev: 0, status: 'idle', err: '', pendingDoc: null, log: null, showLog: false };
+const SYNC = { key: null, akey: null, role: null, who: null, rev: 0, status: 'idle', err: '', pendingDoc: null, log: null, showLog: false };
 (function () {
   try {
     const m = location.hash.match(/k=([\w-]+)/);
-    if (m) { localStorage.setItem('planner_key', m[1]); history.replaceState(null, '', location.pathname + location.search); }
+    if (m) {
+      // admin- codes go to their own slot, so opening the team link never knocks an admin back to team
+      localStorage.setItem(m[1].indexOf('admin-') === 0 ? 'planner_admin_key' : 'planner_key', m[1]);
+      history.replaceState(null, '', location.pathname + location.search);
+    }
     SYNC.key = localStorage.getItem('planner_key');
+    SYNC.akey = localStorage.getItem('planner_admin_key');
     SYNC.who = localStorage.getItem('planner_who');
   } catch (e) {}
 })();
+const effKey = () => SYNC.akey || SYNC.key;
 const canEdit = () => !!SYNC.role && !!SYNC.who;
 const isAdmin = () => SYNC.role === 'admin';
 const newId = (pfx) => pfx + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -285,11 +291,14 @@ function applyDoc(doc) {
   TL = {}; (doc.TL || []).forEach((x) => (TL[x.p] = TL[x.p] || []).push(Object.assign({}, x)));
 }
 async function syncGet(force) {
-  if (!SYNC.key) return;
+  if (!effKey()) return;
   try {
-    const r = await fetch(SYNC_URL + '?key=' + encodeURIComponent(SYNC.key) + (force ? '' : '&since=' + SYNC.rev) + '&t=' + Date.now());
+    const r = await fetch(SYNC_URL + '?key=' + encodeURIComponent(effKey()) + (force ? '' : '&since=' + SYNC.rev) + '&t=' + Date.now());
     const j = await r.json();
-    if (!j.ok) { SYNC.status = 'error'; SYNC.err = j.error || 'error'; if (j.error === 'bad key') SYNC.role = null; render(); return; }
+    if (!j.ok) {
+      if (j.error === 'bad key' && SYNC.akey) { SYNC.akey = null; try { localStorage.removeItem('planner_admin_key'); } catch (e) {} return syncGet(true); }   // stale admin code → fall back to team
+      SYNC.status = 'error'; SYNC.err = j.error || 'error'; if (j.error === 'bad key') SYNC.role = null; render(); return;
+    }
     const first = !SYNC.role; SYNC.role = j.role;
     if (j.same) { if (SYNC.status !== 'ok' || first) { SYNC.status = 'ok'; render(); } return; }
     SYNC.rev = j.rev;
@@ -301,7 +310,7 @@ async function syncGet(force) {
 async function syncPost(ops) {
   SYNC.status = 'saving'; render();
   try {
-    const r = await fetch(SYNC_URL, { method: 'POST', body: JSON.stringify({ key: SYNC.key, who: SYNC.who, ops }) });
+    const r = await fetch(SYNC_URL, { method: 'POST', body: JSON.stringify({ key: effKey(), who: SYNC.who, ops }) });
     const j = await r.json();
     if (j.data) { applyDoc(j.data); SYNC.rev = j.rev; }
     SYNC.status = j.ok ? 'ok' : 'error'; SYNC.err = (j.errs || []).join('; ');
@@ -311,7 +320,7 @@ async function syncPost(ops) {
   } catch (e) { SYNC.status = 'offline'; render(); alert('Could not reach the planner sheet — nothing was saved. Check your connection and try again.'); return false; }
 }
 async function loadLog() {
-  try { const r = await fetch(SYNC_URL + '?action=log&key=' + encodeURIComponent(SYNC.key) + '&t=' + Date.now()); const j = await r.json(); SYNC.log = j.log || []; } catch (e) { SYNC.log = null; }
+  try { const r = await fetch(SYNC_URL + '?action=log&key=' + encodeURIComponent(effKey()) + '&t=' + Date.now()); const j = await r.json(); SYNC.log = j.log || []; } catch (e) { SYNC.log = null; }
   render();
 }
 setInterval(() => { if (!document.hidden) syncGet(); }, 5000);
@@ -437,6 +446,20 @@ function pickWho() {
     (v) => { if (!v.who) { alert('Pick your name.'); return null; } SYNC.who = v.who; try { localStorage.setItem('planner_who', v.who); } catch (e) {} closeModal(); render(); return null; }, null,
     'Saved on this device only. You can change it later from the line under the title.');
 }
+function adminLogin() {
+  openForm('Admin login', [['code', 'Admin code', 'text', '']], (v) => {
+    const code = v.code.trim(); if (!code) return null;
+    fetch(SYNC_URL + '?key=' + encodeURIComponent(code) + '&t=' + Date.now()).then((r) => r.json()).then((j) => {
+      if (j.ok && j.role === 'admin') { SYNC.akey = code; try { localStorage.setItem('planner_admin_key', code); } catch (e) {} SYNC.rev = 0; syncGet(true); }
+      else alert('That code isn’t the admin code.');
+    }).catch(() => alert('Couldn’t reach the planner sheet — try again.'));
+    closeModal(); return null;
+  }, null, 'Only on your own computer. This browser remembers it; the team link won’t override it.');
+}
+function adminLogout() {
+  if (!confirm('Leave admin mode on this browser?')) return;
+  SYNC.akey = null; try { localStorage.removeItem('planner_admin_key'); } catch (e) {} SYNC.rev = 0; syncGet(true);
+}
 function applyUpdate() {
   openForm('Apply an update from PM', [['json', 'Paste the update PM gave you', 'area', '', 8]], (v) => {
     let u; try { u = JSON.parse(v.json); } catch (e) { alert('That isn’t a valid update (not JSON).'); return null; }
@@ -448,7 +471,7 @@ function applyUpdate() {
 }
 function syncBar() {
   const mono = 'font-family:\'IBM Plex Mono\',monospace;';
-  if (!SYNC.key) return '<div style="margin-top:6px;font-size:12px;color:#9B1C1C">No access key on this device — open the planner with your personal link.</div>';
+  if (!effKey()) return '<div style="margin-top:6px;font-size:12px;color:#9B1C1C">Not connected on this device — open the planner once with the team link.</div>';
   const st = { ok: ['#2F855A', 'Synced'], saving: ['#B7791F', 'Saving…'], offline: ['#9B1C1C', 'Offline — showing last loaded data'], error: ['#9B1C1C', 'Error: ' + SYNC.err], empty: ['#B7791F', 'Sheet is empty'], idle: ['#6B7075', 'Connecting…'] }[SYNC.status] || ['#6B7075', SYNC.status];
   const lk = (fn, label) => '<button onclick="' + on(fn) + '" style="border:0;background:none;padding:0;color:#23699A;cursor:pointer;font-size:12px;text-decoration:underline">' + label + '</button>';
   let h = '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font-size:12px;color:#4A4F55">';
@@ -456,7 +479,8 @@ function syncBar() {
   if (SYNC.role) {
     h += '<span>You: <b>' + esc(SYNC.who || '—') + '</b> ' + lk(pickWho, 'change') + (isAdmin() ? ' <span style="' + mono + 'font-size:10.5px;color:#6B7075">(admin)</span>' : '') + '</span>';
     h += lk(() => { SYNC.showLog = !SYNC.showLog; if (SYNC.showLog) loadLog(); else render(); }, SYNC.showLog ? 'Hide recent changes' : 'Recent changes');
-    if (isAdmin()) h += lk(applyUpdate, 'Apply PM update');
+    if (isAdmin()) h += lk(applyUpdate, 'Apply PM update') + lk(adminLogout, 'Leave admin');
+    else h += lk(adminLogin, 'Admin login');
   }
   return h + '</div>';
 }
@@ -541,7 +565,7 @@ function render() {
   h += '</aside><main style="flex:999 1 640px;min-width:0;display:flex;flex-direction:column;gap:16px">';
 
   h += logPanel();
-  if (!Object.keys(P).length) h += '<section style="background:#FFFFFF;border:1px solid #E1E2DC;border-radius:12px;padding:28px;text-align:center;color:#4A4F55;font-size:14px">' + (!SYNC.key ? 'This planner opens with a personal link. Ask Yoni for yours.' : SYNC.status === 'empty' ? 'The planner sheet is empty.' : SYNC.status === 'error' ? 'Couldn’t load the plan: ' + esc(SYNC.err) : 'Loading the plan…') + '</section>';
+  if (!Object.keys(P).length) h += '<section style="background:#FFFFFF;border:1px solid #E1E2DC;border-radius:12px;padding:28px;text-align:center;color:#4A4F55;font-size:14px">' + (!effKey() ? 'Open the planner once with the team link (ask Yoni for it). After that this address works on its own.' : SYNC.status === 'empty' ? 'The planner sheet is empty.' : SYNC.status === 'error' ? 'Couldn’t load the plan: ' + esc(SYNC.err) : 'Loading the plan…') + '</section>';
   else if (view === 'ov') h += renderOverview(sel);
   else if (tlv) h += renderTimeline(sel);
   else if (view === 'pl') h += renderPlatforms(sel);
@@ -630,7 +654,7 @@ function render() {
   document.getElementById('app').innerHTML = h;
 }
 render();
-if (SYNC.key) { syncGet(true).then(() => { if (SYNC.role && !SYNC.who) pickWho(); }); }
+if (effKey()) { syncGet(true).then(() => { if (SYNC.role && !SYNC.who) pickWho(); }); }
 </script>
 </body>
 </html>
