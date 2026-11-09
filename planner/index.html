@@ -11,7 +11,8 @@ html{overflow-y:scroll} /* always reserve the scrollbar so views of different he
 body{margin:0;background:#F4F4F1}
 button{font-family:inherit}
 .blk{margin:2px;padding:5px 7px;border-radius:6px;display:flex;align-items:flex-start;gap:7px;min-width:0;box-sizing:border-box;color:#FFFFFF;font-size:11.5px;font-weight:500;line-height:1.3;position:relative;z-index:1}
-.blk .tx{min-width:0;overflow-wrap:anywhere;white-space:normal}
+.blk .tx{min-width:0;overflow-wrap:anywhere;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pbx{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .blk.prop{outline:2px dashed rgba(255,255,255,.85);outline-offset:-4px}
 .dot{width:20px;height:20px;border-radius:50%;border:1.5px solid #FFFFFF;box-sizing:border-box;color:#FFFFFF;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none;margin-top:1px}
 </style>
@@ -79,6 +80,8 @@ function on(fn) { H.push(fn); return 'H[' + (H.length - 1) + ']()'; }
 function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 const priBadge = (k, big) => { const q = PRI[P[k].pri || 3]; return '<span title="Priority: ' + q[1] + '" style="flex:none;font-family:\'IBM Plex Mono\',monospace;font-size:' + (big ? 11 : 10) + 'px;font-weight:600;padding:1px 6px;border-radius:4px;background:' + q[3] + ';color:' + q[2] + ';white-space:nowrap">' + q[0] + '</span>'; };
 const byPri = (a, b2) => (P[a].pri || 3) - (P[b2].pri || 3);
+const TITLE_MAX = 22;
+const ttl = (x) => x.title || (x.t && x.t.length > TITLE_MAX ? x.t.slice(0, TITLE_MAX - 1).trim() + '…' : (x.t || ''));
 const fmt = (x) => (Math.round(x * 2) / 2).toString();
 const slot = (it) => (IDX[it.date] ?? -999) * 2 + it.h;
 
@@ -346,7 +349,7 @@ function openForm(title, fields, onSave, onDelete, note) {
     if (type === 'area') h += '<textarea name="' + k + '" rows="' + (opts || 3) + '" style="' + inp + ';resize:vertical">' + esc(val) + '</textarea>';
     else if (type === 'sel') h += '<select name="' + k + '" style="' + inp + '">' + opts.map(([v, l]) => '<option value="' + esc(v) + '"' + (String(v) === String(val) ? ' selected' : '') + '>' + esc(l) + '</option>').join('') + '</select>';
     else if (type === 'check') h += '<input type="checkbox" name="' + k + '"' + (val ? ' checked' : '') + '>';
-    else h += '<input name="' + k + '" type="' + (type === 'num' ? 'number' : type === 'date' ? 'date' : 'text') + '"' + (type === 'num' ? ' min="1" step="1"' : '') + ' value="' + esc(val == null ? '' : val) + '" style="' + inp + '">';
+    else h += '<input name="' + k + '" type="' + (type === 'num' ? 'number' : type === 'date' ? 'date' : 'text') + '"' + (type === 'num' ? ' min="1" step="1"' : '') + (type === 'text' && typeof opts === 'number' ? ' maxlength="' + opts + '"' : '') + ' value="' + esc(val == null ? '' : val) + '" style="' + inp + '">';
     h += '</label>';
   });
   h += '<div style="display:flex;gap:8px;justify-content:space-between;margin-top:6px"><span>' + (onDelete ? '<button type="button" id="mdel" style="border:1px solid #E5B4B4;background:#FFFFFF;color:#9B1C1C;border-radius:6px;padding:7px 12px;cursor:pointer;font:inherit">Delete</button>' : '') + '</span>';
@@ -369,7 +372,8 @@ const clean = (o) => { Object.keys(o).forEach((k) => (o[k] === '' || o[k] === fa
 function editBlock(x) {
   const isNew = !x, cur = x || { lane: (Object.keys(PEOPLE).find((k) => PEOPLE[k].name === SYNC.who) || 'yoni'), date: DAYS[Math.max(0, TODAY)] ? DAYS[Math.max(0, TODAY)].iso : START, h: 0, len: 1, p: state.sel || 'team', t: '' };
   openForm(isNew ? 'Add a task' : 'Edit task', [
-    ['t', 'What', 'area', cur.t, 2],
+    ['title', 'Title — shown on the calendar (max ' + TITLE_MAX + ' characters)', 'text', ttl(cur), TITLE_MAX],
+    ['t', 'Details — shown when you hover (optional)', 'area', cur.t && cur.t !== ttl(cur) ? cur.t : '', 3],
     ['lane', 'Who', 'sel', cur.lane, PERSON_OPTS()],
     ['p', 'Project', 'sel', cur.p, PROJ_OPTS()],
     ['date', 'Day (Sun–Thu)', 'date', cur.date],
@@ -379,17 +383,18 @@ function editBlock(x) {
     ['note', 'Note (why it moved, what’s blocking…)', 'text', cur.note || ''],
     ['prop', 'Proposed — not confirmed yet (dashed)', 'check', !!cur.prop]
   ], (v) => {
-    if (!v.t) { alert('Write what the task is.'); return null; }
+    if (!v.title) { alert('Give the task a short title.'); return null; }
+    if (!v.t) v.t = v.title;
     if (IDX[v.date] == null) { alert('Pick a working day (Sun–Thu) between ' + START + ' and ' + END + '.'); return null; }
     const item = clean(Object.assign({}, isNew ? {} : x, v, { h: Number(v.h), len: Math.max(1, v.len || 1) }));
     delete item.id; delete item.by; delete item.at;
     const id = isNew ? newId('b') : x.id;
-    const what = PEOPLE[item.lane].name + ' · ' + DAYS[IDX[item.date]].day + ' ' + DAYS[IDX[item.date]].date + ' · ' + item.t;
+    const what = PEOPLE[item.lane].name + ' · ' + DAYS[IDX[item.date]].day + ' ' + DAYS[IDX[item.date]].date + ' · ' + item.title;
     let s = what;
     if (!isNew) { const ch = []; if (x.date !== item.date || x.h !== item.h) ch.push('moved from ' + x.date + (x.h ? ' PM' : ' AM')); if (x.lane !== item.lane) ch.push('was ' + PEOPLE[x.lane].name); if ((x.st || '') !== (item.st || '')) ch.push(item.st ? 'marked ' + item.st : 'reopened'); if (ch.length) s += ' (' + ch.join('; ') + ')'; }
     if (item.note) s += ' — ' + item.note;
     return [{ op: 'put', coll: 'B', id, item, s }];
-  }, isNew ? null : () => [{ op: 'del', coll: 'B', id: x.id, s: PEOPLE[x.lane].name + ' · ' + x.date + ' · ' + x.t }]);
+  }, isNew ? null : () => [{ op: 'del', coll: 'B', id: x.id, s: PEOPLE[x.lane].name + ' · ' + x.date + ' · ' + ttl(x) }]);
 }
 function editQ(row) {
   const isNew = !row, x = row ? row[6] : { p: state.sel || 'team', name: '', need: '', now: '' };
@@ -604,7 +609,7 @@ function render() {
       }
       const x = it.x, pp = PEOPLE[x.lane] || PEOPLE.yoni, c = (P[x.p] || { c: '#999' }).c, dim = sel && x.p !== sel, hit = sel && x.p === sel;
       const done = x.st === 'done', blk = x.st === 'blocked';
-      h += '<div class="blk' + (x.prop ? ' prop' : '') + '"' + (canEdit() ? ' onclick="' + on(() => editBlock(x)) + '"' : '') + ' title="' + esc(pp.name + ' · ' + (P[x.p] || { name: '?' }).name + ' — ' + x.t + ' (' + fmt(x.len * .5) + ' d)' + (x.prop ? ' · proposed' : '') + (x.st ? ' · ' + x.st : '') + (x.note ? '\n' + x.note : '') + (x.by ? '\nlast change: ' + x.by : '') + (canEdit() ? '\nclick to edit' : '')) + '" style="' + pos + 'background:' + c + ';opacity:' + (dim ? .15 : done ? .5 : 1) + ';' + (canEdit() ? 'cursor:pointer;' : '') + (hit ? 'box-shadow:0 0 0 2px #FFFFFF,0 0 0 4px ' + c + ';' : '') + (blk ? 'box-shadow:0 0 0 3px #E53E3E;' : '') + '"><span class="dot" style="background:' + pp.c + '">' + (done ? '✓' : blk ? '!' : pp.name[0]) + '</span><span class="tx"' + (done ? ' style="text-decoration:line-through"' : '') + '>' + esc(x.t) + (x.note ? '<span style="display:block;font-weight:400;opacity:.9;font-size:10.5px;margin-top:2px">' + esc(x.note) + '</span>' : '') + '</span></div>';
+      h += '<div class="blk' + (x.prop ? ' prop' : '') + '"' + (canEdit() ? ' onclick="' + on(() => editBlock(x)) + '"' : '') + ' title="' + esc(ttl(x) + '\n' + pp.name + ' · ' + (P[x.p] || { name: '?' }).name + ' · ' + fmt(x.len * .5) + ' d' + (x.prop ? ' · proposed' : '') + (x.st ? ' · ' + x.st : '') + (x.t && x.t !== ttl(x) ? '\n\n' + x.t : '') + (x.note ? '\n\nNote: ' + x.note : '') + (x.by ? '\n\nlast change: ' + x.by : '') + (canEdit() ? '\n(click to edit)' : '')) + '" style="' + pos + 'background:' + c + ';opacity:' + (dim ? .15 : done ? .5 : 1) + ';' + (canEdit() ? 'cursor:pointer;' : '') + (hit ? 'box-shadow:0 0 0 2px #FFFFFF,0 0 0 4px ' + c + ';' : '') + (blk ? 'box-shadow:0 0 0 3px #E53E3E;' : '') + '"><span class="dot" style="background:' + pp.c + '">' + (done ? '✓' : blk ? '!' : pp.name[0]) + '</span><span class="tx"' + (done ? ' style="text-decoration:line-through"' : '') + '>' + esc(ttl(x)) + (x.note ? ' <span style="opacity:.8">✎</span>' : '') + '</span></div>';
     });
     h += '</div>';
 
@@ -616,7 +621,7 @@ function render() {
       h += '<div style="margin-top:10px;padding-top:8px;border-top:1px solid #E1E2DC"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#5F6368;margin-bottom:4px">Platforms</div><div style="display:grid;grid-template-columns:repeat(10,minmax(0,1fr));grid-template-rows:repeat(' + pr + ',minmax(26px,auto))">';
       pit.forEach((it) => {
         const c = P[it.x.p].c, dim = sel && it.x.p !== sel;
-        h += '<div title="' + esc(it.x.plat + ' — ' + it.x.t) + '" style="grid-column:' + (it.a + 1) + ' / span ' + it.len + ';grid-row:' + (it.row + 1) + ';margin:2px;padding:3px 8px;border-radius:10px;font-size:10.5px;font-weight:600;line-height:1.3;overflow-wrap:anywhere;min-width:0;background:' + c + '1F;border:1px ' + (it.x.prop ? 'dashed' : 'solid') + ' ' + c + ';color:' + c + ';opacity:' + (dim ? .15 : 1) + '">' + esc(it.x.plat + ' · ' + it.x.t) + '</div>';
+        h += '<div class="pbx" title="' + esc(it.x.plat + ' — ' + it.x.t) + '" style="grid-column:' + (it.a + 1) + ' / span ' + it.len + ';grid-row:' + (it.row + 1) + ';margin:2px;padding:3px 8px;border-radius:10px;font-size:10.5px;font-weight:600;line-height:1.3;overflow-wrap:anywhere;min-width:0;background:' + c + '1F;border:1px ' + (it.x.prop ? 'dashed' : 'solid') + ' ' + c + ';color:' + c + ';opacity:' + (dim ? .15 : 1) + '">' + esc(it.x.plat + ' · ' + it.x.t) + '</div>';
       });
       h += '</div></div>';
     }
