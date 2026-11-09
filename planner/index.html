@@ -33,25 +33,7 @@ const THEMES = [
 ];
 // pri: 1 = top priority now, 2 = high, 3 = normal, 4 = parked / later. Proposed 8 Nov from the Shimrit 1:1 — refine.
 const PRI = { 1: ['P1', 'Top', '#9B1C1C', '#FDE3E3'], 2: ['P2', 'High', '#8C5A00', '#FCEFD6'], 3: ['P3', 'Normal', '#3F444A', '#EEEEEA'], 4: ['P4', 'Parked', '#6B7075', '#F4F4F1'] };
-const P = {
-  'cell-supply':   { name: 'Cell supply', theme: 1, c: '#1F7A5A', pri: 2 },
-  'cell-line':     { name: 'Cell line: health & backup', theme: 1, c: '#0E5E6F', pri: 1 },
-  'bpd-baseline':  { name: 'BPD — clean baseline', theme: 2, c: '#1F5FAF', pri: 1 },
-  'contamination': { name: 'Contamination & 5S', theme: 2, c: '#3D4FA8', pri: 1 },
-  'analytical':    { name: 'Analytical methods (PSD, TTC, FDA)', theme: 2, c: '#23699A', pri: 2 },
-  'media-v1':      { name: 'Media V1', theme: 3, c: '#A0561A', pri: 2 },
-  'gras':          { name: 'GRAS dossier', theme: 3, c: '#7C3F12', pri: 2 },
-  'drying-dsp':    { name: 'Drying & DSP', theme: 3, c: '#8C6200', pri: 2 },
-  'chemo':         { name: 'Chemo support', theme: 3, c: '#C2410C', pri: 3 },
-  'functionality': { name: 'Functionality', theme: 3, c: '#9F1239', pri: 3 },
-  'proc-val':      { name: 'Process validation', theme: 3, c: '#5E6B1F', pri: 4 },
-  'bpd-opt':       { name: 'BPD — optimization (DOE)', theme: 4, c: '#6B4FA0', pri: 4 },
-  'media-v2':      { name: 'Media V2 (hormones, metals)', theme: 4, c: '#8E3F8E', pri: 3 },
-  'antifoam':      { name: 'Antifoam', theme: 4, c: '#A23B72', pri: 3 },
-  'new-lines':     { name: 'New lines (tomato, citrus)', theme: 4, c: '#5B3D7A', pri: 4 },
-  'team':          { name: 'Team & hiring', theme: 5, c: '#4A5568', pri: 2 },
-  'routine':       { name: 'Routine & lab upkeep (no project)', theme: 5, c: '#718096', pri: 3 }
-};
+let P = {};   // projects — loaded from the Sheet
 const PEOPLE = {
   yoni:  { name: 'Yoni',  c: '#2B6CB0', routine: 0, cap: 5 },
   nadav: { name: 'Nadav', c: '#B7410E', routine: 1, cap: 5, routineText: 'daily sampling & checks' },
@@ -60,327 +42,18 @@ const PEOPLE = {
   tech:  { name: 'Technician', c: '#4A5568', routine: 0, cap: 5 }
 };
 
-// b(lane, date, half 0=AM 1=PM, length in half-days, project, text, opts)
-// opts: {prop:1} = proposed (dashed), {tt:1} = moves to technician in "+ Technician" view
+// Plan data lives in the Google Sheet (see SYNC below) and is loaded on start.
+// Shapes: B = calendar blocks {id,lane,date,h,len,p,t,prop,run,tt,st,note}
+//         PB = platform bars, Q = [p,name,need,now,wt,id], TL = {project:[{id,kind,name,s,e,prop,note}]}
+//         OV = project cards, VR = vessel runs
 const b = (lane, date, h, len, p, t, o) => Object.assign({ lane, date, h, len, p, t }, o || {});
-const B = [
-  // ---- Week of 25 Oct ----
-  b('yoni', '2026-10-28', 1, 1, 'cell-line', '"What changed" meeting w/ Shimrit → workplan'),
-  b('nadav','2026-10-28', 1, 1, 'cell-line', '"What changed" meeting w/ Shimrit'),
-  b('dorin','2026-10-28', 1, 1, 'cell-line', '"What changed" meeting w/ Shimrit'),
-  b('or',   '2026-10-28', 1, 1, 'cell-line', '"What changed" meeting w/ Shimrit'),
-  b('nadav','2026-10-28', 0, 1, 'bpd-baseline', 'STR16 stopped — contaminated'),
-  b('nadav','2026-10-29', 0, 1, 'cell-line', 'Count bank + TTC with Or → GO: continue own bank'),
-  b('or',   '2026-10-29', 0, 1, 'cell-line', 'Count Nadav’s bank + TTC with Nadav'),
-  b('nadav','2026-10-29', 1, 1, 'bpd-baseline', 'Seed DG5 (18:00) — 129 g into ~1.17 L (~10%)', { run: 'dg5' }),
-  b('yoni', '2026-10-29', 1, 1, 'analytical', 'PSD: quick scanner test (if time)', { prop: 1 }),
-
-  // ---- Week of 1 Nov ----
-  b('dorin','2026-11-01', 0, 1, 'cell-line', 'Split best sub-line → +2 flasks for new bank'),
-  b('dorin','2026-11-02', 0, 1, 'chemo', 'Chemo batches: TPC plating', { prop: 1 }),
-  b('dorin','2026-11-03', 0, 1, 'media-v1', '50%: last measurement → decide whether to continue', { prop: 1 }),
-  b('dorin','2026-11-05', 0, 1, 'chemo', 'Chemo TPC: read plates', { prop: 1 }),
-
-  b('nadav','2026-11-01', 1, 1, 'bpd-baseline', '1:1 w/ Yoni: DG5 plan, bank, contamination report'),
-  b('nadav','2026-11-02', 0, 1, 'contamination', 'Revise STR14–16 contamination report: cut what we won’t do, tie findings to actions'),
-  b('nadav','2026-11-02', 1, 1, 'bpd-baseline', 'Write DG5 pass criteria (what a good semi run looks like) — before first harvest'),
-  b('nadav','2026-11-03', 0, 1, 'bpd-baseline', 'DG5 fill 1.3 → 2.0 L + glucose to Brix 3.0 (trigger Brix ≤1.5; forecast Tue)', { prop: 1, run: 'dg5' }),
-  b('nadav','2026-11-04', 1, 1, 'bpd-baseline', 'pH probe check vs offline (one-point correction rule)', { prop: 1, run: 'dg5' }),
-  b('nadav','2026-11-05', 0, 1, 'cell-supply', 'Thursday bank — count every flask, keep the best (E1–3, F1–3)'),
-  b('nadav','2026-11-05', 1, 1, 'bpd-baseline', 'DG5 first partial harvest 50% (trigger CMF >25%; forecast Thu) — watch gassing, air to overlay', { prop: 1, run: 'dg5' }),
-
-  b('yoni', '2026-11-01', 0, 1, 'team', 'Technician: post job, start hiring', { prop: 1 }),
-  b('yoni', '2026-11-01', 1, 1, 'bpd-baseline', '1:1 w/ Nadav: DG5 plan, bank, contamination report'),
-  b('yoni', '2026-11-02', 0, 2, 'bpd-baseline', 'Report: how we measure cell density now, going forward, and why', { prop: 1 }),
-  b('yoni', '2026-11-03', 0, 3, 'cell-line', 'Sub-line analysis: aggregates × doubling time × pH × Brix', { prop: 1 }),
-  b('yoni', '2026-11-04', 1, 1, 'cell-line', 'Line 56 vs 41 comparison graph', { prop: 1 }),
-  b('yoni', '2026-11-05', 0, 1, 'cell-line', 'Room temp logs + AC back to 24 °C', { prop: 1 }),
-  b('yoni', '2026-11-05', 1, 1, 'analytical', 'PSD rig: camera/old phone, light box, black background — Nadav sourcing LEDs + scale bar; image flask bottoms without opening', { prop: 1 }),
-
-  b('or',   '2026-11-01', 0, 1, 'drying-dsp', 'Ask ECL: biomass amount + freeze thickness', { prop: 1 }),
-  b('or',   '2026-11-02', 0, 2, 'chemo', 'Bubble reactor: waiting on FOXX first drafts → then design sit-down w/ Yoni', { prop: 1 }),
-  b('yoni', '2026-11-03', 0, 1, 'team', 'Alignment call w/ Or (1.5 h): all of Or’s projects'),
-  b('or',   '2026-11-03', 0, 1, 'team', 'Alignment call w/ Yoni (1.5 h)'),
-  b('or',   '2026-11-03', 1, 2, 'drying-dsp', 'Lyo: dry digestion supernatant fraction (4 samples, metabolomics for Shimrit — urgent)'),
-  b('or',   '2026-11-04', 0, 1, 'drying-dsp', 'Dry freezer samples', { prop: 1 }),
-
-  // ---- Cryo (Dorin's plan, 29 Oct) ----
-  b('dorin','2026-11-01', 1, 1, 'cell-line', 'Cryo: set aside ~10 g (2nd-smallest line) at 4 °C', { prop: 1 }),
-  b('dorin','2026-11-04', 0, 1, 'cell-line', 'Cryo: reculture the 4 °C cells'),
-  b('dorin','2026-11-08', 1, 1, 'cell-line', 'Cryo day 0: TTC, 2 bead lots → 8 sucrose lots'),
-  b('dorin','2026-11-09', 0, 1, 'cell-line', 'Cryo day 1: pre-conditioning (sucrose steps)'),
-  b('dorin','2026-11-10', 0, 1, 'cell-line', 'Cryo day 2: pre-conditioning (sucrose steps)'),
-  b('dorin','2026-11-11', 0, 2, 'cell-line', 'Cryo day 3: dry all lots in hood + TTC'),
-  b('dorin','2026-11-12', 1, 1, 'cell-line', 'Cryo (optional): dissolve dried beads in Ca-free media → viability', { prop: 1 }),
-
-  // ---- Week of 8 Nov ----
-  b('dorin','2026-11-08', 0, 1, 'cell-line', 'Hand sub-line cells to Nadav (comparison vs his bank)', { prop: 1 }),
-
-  b('nadav','2026-11-08', 0, 1, 'cell-line', 'Dorin’s sub-line → 100 mL flasks next to own bank', { prop: 1 }),
-  b('nadav','2026-11-08', 1, 1, 'bpd-baseline', 'DG5 review w/ Yoni after first harvest', { prop: 1, run: 'dg5' }),
-  b('nadav','2026-11-12', 0, 1, 'cell-supply', 'Thursday bank'),
-
-  b('yoni', '2026-11-08', 0, 1, 'team', '1:1 w/ Shimrit: dashboard walk-through, project scopes, Antonio visit'),
-  b('yoni', '2026-11-08', 1, 1, 'bpd-baseline', 'Cell growth analysis: Incyte / density / Brix / TDS → formulas'),
-  b('yoni', '2026-11-08', 1, 1, 'gras', 'GRAS sync w/ Shimrit: batch/harvest mapping, Diana’s medium table, what R&D still owes'),
-  b('yoni', '2026-11-08', 1, 1, 'drying-dsp', 'ECL: send first lyo document (overdue from Thu/Fri)'),
-  b('yoni', '2026-11-09', 0, 1, 'functionality', 'Bimbo screening: finalise plan + protocol with Dorin, pick the day', { prop: 1 }),
-  b('yoni', '2026-11-09', 1, 1, 'team', 'Meeting: Nadav’s work, hormone results, cleaning/autoclave plan', { prop: 1 }),
-  b('nadav','2026-11-09', 1, 1, 'team', 'Meeting w/ Yoni + Shimrit: DG5/DG6, cleaning/autoclave plan', { prop: 1 }),
-  b('or',   '2026-11-09', 1, 1, 'media-v2', 'Meeting: hormone-reduction results (review before)', { prop: 1 }),
-  b('yoni', '2026-11-10', 0, 1, 'bpd-baseline', 'pH: compare with Chemo full log', { prop: 1 }),
-  b('yoni', '2026-11-10', 1, 2, 'analytical', 'PSD: camera method vs Mastersizer', { prop: 1 }),
-
-  b('or',   '2026-11-08', 0, 1, 'gras', 'Non-viability: does freeze-dried material regrow? 10 g from a bank flask; Dorin helps a few steps', { prop: 1 }),
-  b('or',   '2026-11-09', 0, 2, 'drying-dsp', 'Lyo: repeat last program with auto-logging + new USB cable → judge the program by end of week', { prop: 1 }),
-  b('or',   '2026-11-11', 1, 1, 'drying-dsp', 'Lyo review w/ Yoni: Dorin’s holiday high-load run (load, max thickness) + latest runs', { prop: 1 }),
-  b('yoni', '2026-11-11', 1, 1, 'drying-dsp', 'Lyo review w/ Or → what have we proven?', { prop: 1 }),
-  b('yoni', '2026-11-12', 0, 1, 'drying-dsp', 'ECL: send what our lyo work proves; propose a dummy-load trial with a primary-drying check; ask lyo model, shelf area, what their vessel is', { prop: 1 }),
-  b('or',   '2026-11-10', 0, 1, 'chemo', 'Bubble reactor: parts + build plan', { prop: 1 }),
-
-  // ---- Week of 15 Nov ----
-  b('dorin','2026-11-15', 0, 2, 'functionality', 'Bimbo screening: aqueous + ethanolic extracts + solvent controls (full day; Sun/Mon, Tue at the latest)', { prop: 1 }),
-
-  b('nadav','2026-11-15', 0, 1, 'cell-line', 'Sub-line vs own bank: compare at 100 mL → expand for 2nd vessel', { prop: 1 }),
-  b('nadav','2026-11-19', 0, 1, 'cell-supply', 'Thursday bank'),
-
-  b('yoni', '2026-11-17', 0, 2, 'analytical', 'TTC quantification method', { prop: 1 }),
-
-  b('or',   '2026-11-16', 0, 1, 'drying-dsp', 'Validate ECL freeze conditions (once ECL answers)', { prop: 1 }),
-  b('or',   '2026-11-16', 1, 1, 'cell-line', 'Sieving phase 1 review w/ Yoni → decide phase 2', { prop: 1 }),
-  b('yoni', '2026-11-16', 1, 1, 'cell-line', 'Sieving phase 1 review w/ Or → decide phase 2', { prop: 1 }),
-
-  // ---- Technician scenario only ----
-  b('tech', '2026-11-02', 0, 1, 'contamination', 'Autoclave indicators: large — media + harvest bottles', { prop: 1 }),
-  b('tech', '2026-11-03', 0, 1, 'contamination', 'Autoclave indicators: small — MF vessels', { prop: 1 }),
-  b('tech', '2026-11-04', 0, 1, 'contamination', 'Autoclave indicators: large — Dasgip vessels', { prop: 1 }),
-  b('tech', '2026-11-11', 0, 4, 'chemo', 'Bubble reactor build (with Or)', { prop: 1 }),
-  b('tech', '2026-11-16', 0, 4, 'chemo', 'Bubble reactor sterility + first test', { prop: 1 })
-];
-
-// Recurring: Dorin's plate→liquid line, every Sunday from 1 Nov, indefinitely
-(function () {
-  const d = new Date('2026-11-01T12:00:00'), end = Date.parse(END + 'T23:59:59');
-  while (d.getTime() <= end) {
-    const iso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-    B.push(b('dorin', iso, 0, 1, 'cell-line', 'Plate→liquid line: weekly 2 flasks'));
-    d.setDate(d.getDate() + 7);
-  }
-})();
-
-// Media V1 recurring work (Dorin)
-['2026-11-02', '2026-11-09'].forEach((d) => B.push(b('dorin', d, 0, 1, 'media-v1', '3% experiment: Monday work')));
-B.push(b('dorin', '2026-11-16', 0, 1, 'media-v1', '3% experiment: Monday work (if it runs to 16 Nov)', { prop: 1 }));
-['2026-11-04', '2026-11-11', '2026-11-18'].forEach((d) => B.push(b('dorin', d, 1, 1, 'media-v1', 'Filter vs autoclave: Wednesday work')));
-B.push(b('dorin', '2026-11-25', 1, 1, 'media-v1', 'Filter vs autoclave: last Wednesday → data'));
-
-// Platforms: pb(platform, date, half, len, project, text, opts)
-const pb = (plat, date, h, len, p, t, o) => Object.assign({ plat, date, h, len, p, t }, o || {});
-const PB = [
-  pb('Flasks', '2026-10-25', 0, 18, 'media-v1', '50% experiment → decide 3 Nov', { prop: 1 }),
-  pb('Flasks', '2026-10-25', 0, 30, 'media-v1', '3% (one group) → 9 Nov, maybe 16'),
-  pb('Flasks', '2026-10-25', 0, 48, 'media-v1', 'Filter vs autoclave → 25 Nov'),
-  pb('Flasks', '2026-11-01', 0, 999, 'cell-line', 'New line: 2 flasks / week (ongoing)'),
-  pb('Flasks', '2026-11-04', 0, 6, 'cell-line', 'Cryo: recultured cells (4 °C → Wed)'),
-  pb('Flasks', '2026-11-08', 1, 7, 'cell-line', 'Cryo: 8 sucrose lots')
-];
-
-// Not on the calendar yet: [project, name, need/blocker, status now, status with technician]
-const Q = [
-  ['contamination', '“House check”: autoclave validation (Or’s indicator capsules) + thorough cleaning review with Nadav', 'In-house, not a contractor (8 Nov). Book dedicated time with Nadav — full disassembly, every small part, done thoroughly, not squeezed in. Done before Antonio’s visit (wk of 13 Dec). Report findings: worn harvest-bottle parts, repeated autoclaving never validated.', 'book dates', 'book dates'],
-  ['contamination', 'Blank media run (complete vessel, media only, no cells)', 'Or’s idea. Fine as a one-off if a vessel is free — not a gate before restarting runs (8 Nov).', 'optional', 'optional'],
-  ['contamination', 'Harvest handling: proposal to Shimrit', 'Even with autoclave + cleaning validated, handling isn’t ideal. Yoni brings a proposal.', 'Yoni', 'Yoni'],
-  ['contamination', 'Room: Itay’s idea; 5S + PPE rules (e.g. gloves left on chairs)', 'Itay may propose directly. 5S reference area + sign-off moved off the calendar until dates are agreed.', 'no date', 'no date'],
-  ['bpd-baseline', 'DG6: running — add start date, purpose and vessel', 'Shimrit noticed DG5/DG6 missing (8 Nov). DG5 now shown to the mid-Dec decision.', 'needs data', 'needs data'],
-  ['contamination', 'Replace worn harvest-bottle parts; open the bottle as little as possible', 'From the STR14–16 report: the harvest bottle is the weak point', 'no date', 'no date'],
-  ['team', 'Dashboard 2.0: team update channel', 'Nadav 1 Nov: only Yoni can edit. Vision (8 Nov): each person posts ONE update (voice or text) when something slips or is added → it updates the schedule and notifies Yoni; still tell Yoni in person too. Also: team adds routine work and missed tasks.', 'open gap', 'open gap'],
-  ['team', 'Shimrit reviews the dashboard 2–3× a week', 'Agreed 8 Nov: she opens it, flags what doesn’t make sense, sends voice notes. Clean it up before Antonio sees it.', 'agreed', 'agreed'],
-  ['team', 'Separate meeting w/ Shimrit: possible project freeze + ATOVA questions', 'Shimrit suggested freezing a project that isn’t a product yet until ATOVA answers — which one is unclear in the recording (bag work?). Confirm.', 'to schedule', 'to schedule'],
-  ['routine', 'Dorin: sterility plates', 'Not part of any project but can take half a day — must show on the calendar. Add frequency.', 'needs cadence', 'needs cadence'],
-  ['routine', 'Periodic microscopy of each line', 'Shimrit asked if it adds value; Yoni: yes. First: new liquid line vs old line — photograph, save to the folder.', 'set cadence', 'set cadence'],
-  ['chemo', 'Bubble reactor: build → runs', 'Or + Yoni own it (3 Nov). Or leads design and needs lab support for runs. Yoni needs 2 weeks’ notice before any bench work so Nadav’s week can absorb it. Streams: FOXX prefab carboy (first drafts pending), improvised 10 L carboy (carboy + Yoni’s cap in hand), Aran bags (order raised 10→20, no date; asked for a 30–40 L conical model; Aran’s 50 L design needs a cage + minimum order).', 'waiting on FOXX', 'waiting on FOXX'],
-  ['bpd-opt', 'DOE: temperature deep-dive (then pH, DO)', 'Dasgip + Nadav; best temp, reversibility, product attributes', 'after baseline', 'after baseline'],
-  ['media-v1', 'Media V1: close with glucose correction', 'Direction set 8 Nov. Flasks are more sensitive than the reactor, so they’re a poor model for operating limits. Controlled lower-limit runs only if someone requires them (1–2 months). Chemo implementation stays Or’s call.', 'closing', 'closing'],
-  ['media-v1', 'Spent-media analysis — first batch of tests', 'Agreed must-do (3 Nov). External labs ~300–400 NIS/sample; learn the noise first. Or sends the old ICP result (Bioreactor 1000 material) and checks what the Innovation Authority grant covers. In-house ICP-MS only if small and simple. Production wash liquid was not kept; unwashed material never profiled. Must happen before Media V1 closes; Shimrit sends the cost (8 Nov).', 'waiting on cost', 'waiting on cost'],
-  ['media-v2', 'Heavy-metal reduction', 'Future idea only; not yet known whether the metals come from us. Can be dropped (8 Nov).', 'parked', 'parked'],
-  ['antifoam', 'Münzing: decide on the IP question, then reply', 'Call held 5 Nov; Patrick offers portfolio screening → custom formulation, with special conditions. Strategic call: if they won’t sign, drop the IP angle and just use their products?', 'decide', 'decide'],
-  ['new-lines', 'Tomato: revive in suspension + process', 'Next product; grew well in suspension before (data exists). Owner and start TBD', 'no owner', 'no owner'],
-  ['new-lines', 'Citrus: get a line into suspension', 'Responds badly in suspension and not working in semi-solid either (8 Nov); talk it through with Or. Owner TBD', 'no owner', 'no owner'],
-  ['proc-val', 'Process validation: parameter limits × metabolomics', 'Needs a clean baseline first', 'after baseline', 'after baseline'],
-  ['functionality', 'GLP-1 simulated study (2× gastric retention)', 'Owner and dates TBD', 'no owner', 'no owner'],
-  ['functionality', 'Meet Itay (Yoni + Or): get his wish list; propose a cells-per-gram spec', 'Itay asks for brochure tests and a top-100 metabolite “vector”. Or: LC-MS profiling isn’t quantitative. Or discussed cells-per-gram with Shimrit + Einat (2 Nov); Itay lukewarm', 'to schedule', 'to schedule'],
-  ['gras', 'dsm-firmenich PGR composition sheet — enough for the regulator?', 'Signed food-grade sheet for both PGR packs (house standard 99%; Ph. Eur / USP grades). dsm also issues per-batch CoA from ICP. Ask ATOVA whether the sheet is enough or per-batch CoA + MSDS are needed', 'ask ATOVA', 'ask ATOVA'],
-  ['media-v2', 'Hormone-reduction results: review with Or → Monday meeting', 'Dorin’s DOE: no way to cut hormones; Or earlier saw a hint that one could go. Or reviews this week; results shown Mon 9 Nov. Hormone change is out of scope for Media V1.', 'Mon 9 Nov', 'Mon 9 Nov'],
-  ['team', 'Or: go through the planner and flag anything disconnected from reality', 'Link sent 3 Nov', 'asked', 'asked'],
-  ['cell-line', 'Dorin, Sun 8 Nov: bank passage + sub-line to Nadav + cryo day 0 + plate→liquid + help Or’s non-viability test', 'Too much for one day — move one item', 'clash', 'clash'],
-  ['cell-line', 'Plate→liquid line grew faster than expected — is it real?', 'Check in grams, not by eye (8 Nov). Microscopy vs the old line.', 'check', 'check'],
-  ['drying-dsp', 'Criofarma bag tests', 'Or; waiting on bags', 'waiting', 'waiting'],
-  ['drying-dsp', 'Repeat the spray-dryer test raised at the 4 Nov team meeting', 'Unclear in the 8 Nov recording what exactly (viability? stability?) — confirm with Shimrit/Dorin.', 'confirm', 'confirm'],
-  ['analytical', 'FDA viability: explore', 'Yoni; reagent has arrived. TTC quantification first (gives a number). Camera rig: Nadav can help', 'reagent in', 'reagent in'],
-  ['analytical', 'Cells-per-gram count', 'Or’s idea (probiotic-style spec). Worth doing as its own method: cells vs biomass, small vs large cells, division vs growth across a cycle', 'no owner', 'no owner'],
-  ['team', 'Nadav away in December', 'Cover runs + bank; natural renovation window (Shimrit ↔ Einat)', 'plan cover', 'plan cover'],
-  ['gras', 'GRAS dossier: Diana’s open questions', 'Shimrit runs it. Open since 3 Nov: how the 5 Eurofins samples map to batches/harvests (process knowledge — likely Yoni), medium comparison table (HiMedia vs Duchefa), rbcL/matK on the MCB (Microsynth), intended-uses list. Avi S.: anthocyanins + ellagic acid — he orders standards, runs it, we pay.', 'Shimrit', 'Shimrit'],
-  ['cell-line', 'Low priority: metabolomics samples (Shimrit), Microsynth DNA question', 'Only if cheap and no team time', 'no date', 'no date']
-];
-
-
-// ---- Project timeline (Gantt) ----
-// ph(name, start, end, opts) = phase bar; ms(name, date, opts) = milestone
-// opts: {prop:1} proposed (dashed), {note:'...'} warning under the name
-const ph = (name, s, e, o) => Object.assign({ kind: 'ph', name, s, e }, o || {});
-const ms = (name, s, o) => Object.assign({ kind: 'ms', name, s, e: s }, o || {});
-const TL = {
-  'cell-line': [
-    ms('Nadav’s bank: GO — continue', '2026-10-29'),
-    ph('Dorin expands best sub-line', '2026-11-01', '2026-11-08'),
-    ph('Sub-line analysis (Yoni)', '2026-11-03', '2026-11-05', { prop: 1 }),
-    ms('Dorin’s sub-line → Nadav (comparison)', '2026-11-08', { prop: 1 }),
-    ph('Sub-line vs Nadav’s bank at 100 mL', '2026-11-08', '2026-11-22', { prop: 1 }),
-    ph('Cryo: reculture → beads → pre-cond → dry (Dorin)', '2026-11-04', '2026-11-12', { note: 'Drying-curve pilot not in Dorin’s plan — confirm' }),
-    ms('Cryo: all lots dried', '2026-11-11'),
-    ph('Sub-line in 2nd vessel (do differences hold in a reactor?)', '2026-11-23', '2026-12-10', { prop: 1, note: 'Runs into Nadav’s December absence — needs cover, or slips to January' }),
-    ph('Plate→liquid line: 2 flasks every Sunday (ongoing)', '2026-11-01', END),
-    ph('Sieving phase 1 (Or): <355 / 355–500 / >500 µm fractions, lines AA vs BA — cycle 2 in flasks', '2026-10-25', '2026-11-15'),
-    ms('Decide sieving phase 2: bioreactor, small vs large aggregates under partial harvest', '2026-11-16', { prop: 1, note: 'Needs inoculum planning — expand existing fractions in flasks first' }),
-    ms('Decide: is the new line good?', '2026-12-20', { prop: 1 })
-  ],
-  'bpd-baseline': [
-    ph('DG5: semi-continuous, partial harvests — runs to the decision', '2026-10-29', '2026-12-14', { note: 'First clean semi run (Yoni, 1 Nov). End date TBD. DG6 also running — add its dates' }),
-    ms('Pass criteria defined (Nadav)', '2026-11-02'),
-    ms('DG5 fill to 2 L (forecast)', '2026-11-03', { prop: 1 }),
-    ms('DG5 first 50% harvest (forecast)', '2026-11-05', { prop: 1 }),
-    ms('Goal 1 closed: cell-density report', '2026-11-03', { prop: 1 }),
-    ph('Sub-line semi run (2nd vessel)', '2026-11-23', '2026-12-10', { prop: 1, note: 'Same run as the cell-line test' }),
-    ms('Decide: semi baseline or perfusion fallback', '2026-12-14', { prop: 1, note: 'Fallback = total media exchange (perfusion) to keep cells coming' }),
-    ms('Antonio visit — present the clean-baseline story', '2026-12-13', { prop: 1, note: 'Week of 13–14 Dec; exact day TBC' }),
-    ms('Next after baseline: optimization (DOE)', '2026-12-20', { prop: 1 })
-  ],
-  'contamination': [
-    ms('STR14–16 report revised (Nadav)', '2026-11-02'),
-    ms('Target: autoclave validated + cleaning review done, before Antonio', '2026-12-10', { prop: 1, note: 'Work dates not set with Nadav yet — see “Not on the calendar”' }),
-    ph('Room renovation window', '2026-12-01', '2026-12-31', { prop: 1, note: 'Dates TBD — Shimrit ↔ Einat' })
-  ],
-  'analytical': [
-    ph('PSD rig: camera, light box, background', '2026-11-05', '2026-11-05', { prop: 1 }),
-    ph('PSD: camera method vs Mastersizer', '2026-11-10', '2026-11-11', { prop: 1 }),
-    ph('TTC quantification method', '2026-11-17', '2026-11-18', { prop: 1 })
-  ],
-  'chemo': [
-    ph('TPC on Chemo batches (Dorin)', '2026-11-02', '2026-11-05', { prop: 1 }),
-    ph('Bubble reactor: FOXX drafts → design (Or + Yoni)', '2026-11-02', '2026-11-17', { prop: 1, note: 'Bench work only with 2 weeks’ notice to Yoni (Nadav’s week)' })
-  ],
-  'drying-dsp': [
-    ms('Ask ECL: biomass amount + thickness', '2026-11-01', { prop: 1 }),
-    ms('Digestion supernatant dried (Shimrit, metabolomics)', '2026-11-04', { prop: 1 }),
-    ph('Lyo repeat run with auto-logging', '2026-11-09', '2026-11-13', { prop: 1 }),
-    ms('Tell ECL what is proven + propose dummy-load trial', '2026-11-12', { prop: 1 }),
-    ph('Dry freezer samples (ongoing)', '2026-11-01', '2026-12-31'),
-    ph('Validate ECL freeze conditions', '2026-11-16', '2026-11-16', { prop: 1, note: 'Waits on ECL’s answer' })
-  ],
-  'media-v1': [
-    ms('R&D meeting: Dorin presents glucose correction + 50%', '2026-11-04', { prop: 1 }),
-    ms('Direction set: close Media V1 with glucose correction (Shimrit 1:1)', '2026-11-08'),
-    ph('3% experiment (one group, Mondays)', '2026-10-25', '2026-11-09', { note: 'May run to 16 Nov' }),
-    ph('Filter vs autoclave (Wednesdays)', '2026-10-25', '2026-11-25'),
-    ms('Filter vs autoclave: final data', '2026-11-25')
-  ],
-  'functionality': [
-    ms('In vitro digestion done (Dorin)', '2026-10-25'),
-    ms('Bimbo screening (Dorin, full day)', '2026-11-15', { prop: 1, note: 'Sun/Mon, Tue at the latest' })
-  ],
-  'gras': [
-    ph('Non-viability: does freeze-dried material regrow? (Or)', '2026-11-08', '2026-11-12', { prop: 1 })
-  ],
-  'team': [
-    ph('Technician: hire', '2026-11-01', '2026-11-30', { prop: 1 }),
-    ph('Technician onboarding (~2 wks)', '2026-12-01', '2026-12-14', { prop: 1 }),
-    ph('Nadav away', '2026-12-01', '2026-12-31', { prop: 1, note: 'Exact dates TBD' })
-  ]
-};
-
-
-// ---- Project overview cards (Projects view) ----
-// Rewritten from Yoni's 3 Nov notes. goals = what "done" means; plan = [step, rough duration]; durations are estimates.
-const OV = {
-  'cell-supply': { owner: 'Yoni', who: 'Nadav, Dorin', horizon: 'Ongoing', status: 'Running',
-    goals: ['Steady supply of healthy cells for flask work and bioreactor runs'],
-    plan: [['Weekly flask banks — Dorin (Sun), Nadav (Thu); count every flask, keep the best', 'weekly'], ['Bioreactor supply runs once the baseline settles semi-continuous vs perfusion', 'from ~Dec']],
-    next: 'Keep the banks going' },
-  'cell-line': { owner: 'Yoni', who: 'Dorin, Nadav, Or', horizon: '~2 months (to late Dec)', status: 'Active — top priority (Shimrit)',
-    goals: ['Recover the "old phenotype": shorter, more consistent doubling time; lower end-of-cycle pH and Brix; smaller aggregates', 'Remove the single-line risk: cryo bank and a fresh plate→liquid line'],
-    plan: [['Phase 1, flasks: sub-lines vs Nadav’s bank + sub-line analysis', '3–4 wks (Nov)'], ['Phase 2, bioreactor: best sub-line in a second vessel', '~3 wks (late Nov–Dec)'], ['Backup: first cryo round; plate→liquid line, 2 flasks a week', 'Nov · ongoing'], ['Decide: is the new line good?', 'late Dec']],
-    next: 'Sub-line into Nadav’s flasks (~8 Nov); plate→liquid line grew fast — check it in grams + microscopy vs old line; Or’s sieving review ~16 Nov' },
-  'bpd-baseline': { owner: 'Yoni', who: 'Nadav', horizon: '~5 weeks (to mid-Dec)', status: 'Close to done — last gate',
-    goals: ['Reliable growth measurement — achieved: soft sensors (Brix decline as simulated CMF; Incyte optional) replace syringe sampling', 'Antifoam — dropped as a goal; we live with foam (own project)', 'Cell-supply process: semi-continuous; fallback = total media exchange (perfusion)'],
-    plan: [['Cell growth analysis (Incyte / density / Brix / TDS) → formulas + report', 'now'], ['DG5 (+ DG6): semi-continuous with partial harvests', 'Nov–Dec'], ['Decide semi or perfusion', 'mid-Dec'], ['Present to Antonio (week of 13 Dec) — this is the core story', 'Dec'], ['Then: optimization (DOE)', 'after']],
-    next: 'Growth analysis; DG5 semi result. Nadav’s focus is this, not more reactors' },
-  'contamination': { owner: 'Yoni', who: 'Nadav; everyone for 5S', horizon: 'Before Antonio (wk of 13 Dec), then ongoing', status: 'Planning — “house check”',
-    goals: ['Autoclave and cleaning validated, done in-house and done thoroughly', 'Contamination-prevention plan rolled out and followed; 5S kept up'],
-    plan: [['Autoclave validation with Or’s indicator capsules (in-house, no contractor)', '~1–2 wks'], ['Thorough cleaning review with Nadav: full disassembly, every small part — booked time, not ad hoc', '~1–2 wks'], ['Blank media run (Or’s idea) — optional one-off if a vessel is free, not a gate', 'optional'], ['Harvest handling: proposal to Shimrit', 'TBD'], ['Lab/room redesign (Itay has an idea); 5S, PPE rules', 'Dec window · ongoing']],
-    next: 'Book the cleaning review with Nadav; start autoclave indicators' },
-  'analytical': { owner: 'Yoni', who: 'Dorin, Nadav (routine samples)', horizon: '~1–2 months', status: 'Active',
-    goals: ['PSD: routine aggregate-size measurement by imaging', 'TTC: quantitative viability', 'FDA: is it feasible for us?'],
-    plan: [['PSD: camera rig → measure → compare with Mastersizer → lock protocol', '2–3 wks'], ['TTC: calibration curve', 'a few days wet work'], ['FDA: first feasibility test', '~1 wk, after PSD + TTC']],
-    next: 'Build the PSD rig' },
-  'media-v1': { owner: 'Yoni', who: 'Dorin, Nadav', horizon: 'Close after spent-media analysis', status: 'Closing',
-    goals: ['Media and feeding conditions that support the widest range of growth cycles, with proven operating boundaries', 'Know what the cells consume and produce (spent-media analysis)'],
-    plan: [['Finish running flasks (3%, filter vs autoclave)', 'to late Nov'], ['Repeat the 50% flask test with glucose correction — does it rescue growth?', '3–4 wks'], ['Glucose correction on media feeds and partial harvests in the bioreactor', 'with BPD runs'], ['Why the 50% effect doesn’t show in Chemo partial-harvest data', 'desk, ~1 wk'], ['Spent-media analysis: a few repeats → findings + process recommendations', '1–2 months']],
-    next: 'Close with glucose correction. Flasks are more sensitive than the reactor, so flask “limits” are a poor model — controlled lower-limit runs only if someone requires them (1–2 months). Spent-media analysis before closing (Shimrit sends the cost). Hormones out of scope' },
-  'gras': { owner: 'Shimrit', who: 'Or, Yoni (gaps as assigned)', horizon: 'Dossier target end Dec', status: 'Ad hoc support',
-    goals: ['Dossier submitted; R&D closes gaps as they come up'],
-    plan: [['Non-viability study on the powders (Or)', 'from 8 Nov'], ['Avi Shpigelman: anthocyanins + ellagic acid — he orders standards, writes + runs the protocol; we pay', 'TBD'], ['Trace the source of lactose, lead etc. in commercial material', 'TBD'], ['Diana’s open questions: batch/harvest mapping, medium comparison table', 'now']],
-    next: 'Separate meeting on ATOVA’s questions (8 Nov PM)' },
-  'drying-dsp': { owner: 'Or', who: 'Or, Yoni', horizon: '~1–2 months (reports + plan)', status: 'Active',
-    goals: ['In-house lyo: baseline protocol for a defined sample load', 'What drives colour and quality of dewatered biomass — and how long wet biomass can wait', 'Support ECL / Italy on scalable wash, dewatering and drying'],
-    plan: [['Write up the in-house lyo runs so far', 'now — most urgent'], ['Or tunes lyo settings + updates the protocol — fine as long as he records every change', 'ongoing'], ['Powder colour: Or’s theory = filter pore size at dewatering; Yoni’s fridge-storage test showed no colour change before drying → plan a proper study or drop it', 'decide'], ['Scale-down ideas for ECL / Italy, e.g. nutsche cake thickness vs air flow', 'TBD']],
-    next: 'ECL first document today (overdue); lyo repeat with logging this week → tell ECL what is proven (~12 Nov)' },
-  'chemo': { owner: 'Or + Yoni', who: 'Or; Nadav with 2 weeks’ notice', horizon: 'TBD — waits on vendors', status: 'Scoping — waiting on FOXX',
-    goals: ['A working alternative to the 250 L pilot step'],
-    plan: [['Aran bag stream', 'TBD'], ['Prefab carboy (FOXX) — Or', 'TBD'], ['Improvised carboy — Nadav or Or', 'TBD'], ['Agree scope, dates and Nadav’s share with Or', 'now']],
-    next: 'FOXX drafts → design sit-down; Aran bag dates' },
-  'functionality': { owner: 'TBD', who: 'Dorin, Or', horizon: 'TBD', status: 'Bimbo screen next',
-    goals: ['Evidence for product claims beyond GRAS (marketing)'],
-    plan: [['Bimbo screening for Itay’s client (Shimrit’s plan, 5 Nov): Dorin preps aqueous + ethanolic extracts + solvent controls, 0.5 mL each', '1 full day, wk of 15 Nov'], ['GLP-1 idea: first test', 'TBD'], ['In vitro digestion, short vs long gastric stage — effect on TPC etc.', 'TBD'], ['Maybe: TPC on all commercial samples', 'TBD']],
-    next: 'Finalise Bimbo protocol with Dorin, pick the day; meet Itay' },
-  'proc-val': { owner: 'Yoni', who: '—', horizon: 'Ask now; work after baseline', status: 'Open question',
-    goals: ['Know whether we need defined process limits (as pharma or CCC would), and set them if so'],
-    plan: [['Ask ATOVA directly whether the dossier needs process limits', 'now'], ['If yes: parameters and ranges from the DOE + metabolomics', 'after baseline']],
-    next: 'Put the question to ATOVA' },
-  'bpd-opt': { owner: 'Yoni', who: 'Nadav', horizon: '~2–3 months, after baseline', status: 'Not started',
-    goals: ['Fastest achievable growth rate', 'Limits for pH, DO, temperature, agitation', 'Is the temperature effect reversible?'],
-    plan: [['Dasgip DOE series: temperature first, then pH, DO, agitation', '~1 wk / run + analysis'], ['Optimized scale-up runs', '~2 wks each']],
-    next: 'Waits for the clean baseline' },
-  'media-v2': { owner: 'Yoni', who: 'Dorin, Or', horizon: '~3–4 months', status: 'Results to review (Mon 9 Nov)',
-    goals: ['Reduce or remove problem components (hormones, metals, nitrate)', 'Optimize the media from spent-media results'],
-    plan: [['Review hormone-reduction results as a team, with Or → next step', '1 meeting — now'], ['Schedule metal and nitrate reduction experiments', '3–4 wks each'], ['Feed in spent-media results from Media V1', 'later']],
-    next: 'Hormone results at Monday’s meeting — Dorin’s DOE says no cut is possible, Or saw an earlier hint that one hormone could go. Metals: future only, can drop' },
-  'antifoam': { owner: 'Yoni', who: '—', horizon: 'Weeks to regroup; tests TBD', status: 'Decision needed',
-    goals: ['No foaming in the bioreactor without harming the cells'],
-    plan: [['Check all past work is captured in reports', '~1 h+'], ['Münzing call — done 5 Nov; they offer portfolio screening, then custom formulation, special conditions', 'done'], ['Strategic call: give up the IP angle if they won’t sign, and just use their products?', 'decide'], ['Find at least one other supplier', '2–4 wks']],
-    next: 'Decide on the IP question, then reply to Patrick' },
-  'new-lines': { owner: 'TBD', who: 'TBD', horizon: 'TBD', status: 'No owner',
-    goals: ['Tomato back in suspension, with an initial bioreactor process', 'Citrus in suspension'],
-    plan: [['Write up what exists: tomato (reportedly worked), citrus (failed; Excel data only)', '~1 wk'], ['Citrus: not working in semi-solid either — talk it through with Or', 'TBD'], ['Then decide owner and start (tomato first)', '—']],
-    next: 'Reports on both' },
-  'routine': { owner: 'Each person', who: 'Dorin, Nadav', horizon: 'Ongoing', status: 'Being listed',
-    goals: ['Routine work that belongs to no project is visible, because it competes with project work for the same hours'],
-    plan: [['Dorin: sterility plates (half a day when it happens) — add frequency', 'TBD'], ['Periodic microscopy check of every line (Shimrit asked; Yoni: yes)', 'set cadence'], ['Nadav: daily sampling & checks; Thursday bank', 'daily · weekly'], ['Dorin: media prep, housekeeping; Sunday bank', 'daily · weekly']],
-    next: 'Dorin + Nadav list their routine work with time per week' },
-  'team': { owner: 'Yoni', who: '—', horizon: '~6 wks to an onboarded tech', status: 'Active',
-    goals: ['Technician hired and onboarded', 'Cover for Nadav’s December absence'],
-    plan: [['Review and approve the job description', 'now'], ['Post and hire', '~4 wks'], ['Onboarding', '~2 wks']],
-    next: 'Approve the JD' }
-};
+let B = [], PB = [], Q = [], TL = {}, OV = {};
 
 // ---- Bioreactor vessels (Platforms view + vessel filter) ----
 // v = vessel, or 'TBC' until assigned. fam = which kind it needs (shown while TBC).
 // Calendar blocks link to a run with {run:'id'}, so assigning a vessel here updates everything.
 const VESSELS = ['MF1', 'MF2', 'MF3', 'DG1', 'DG2', 'DG3', 'DG4'];
-const VR = [
-  { id: 'dg5',  v: 'TBC', fam: 'Dasgip', s: '2026-10-29', e: '2026-12-14', p: 'bpd-baseline', t: 'DG5 semi-continuous (Nadav’s bank) — continues to the semi/perfusion decision; end TBD' },
-  // DG6 is running (8 Nov) but its start date and purpose aren't in the planner yet — add here: { id: 'dg6', v: '…', fam: 'Dasgip', s: 'YYYY-MM-DD', e: '…', p: '…', t: 'DG6 …' }
-  { id: 'sub2', v: 'TBC', fam: 'any',    s: '2026-11-23', e: '2026-12-10', p: 'cell-line', t: 'Sub-line semi run (2nd vessel)', prop: 1 }
-];
+let VR = [];
 
 /* ================= ENGINE ================= */
 const DAYN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu'];
@@ -465,7 +138,7 @@ function renderOverview(sel) {
         h += '</div>';
       }
       h += '<div style="margin-top:auto;display:flex;justify-content:space-between;gap:10px;align-items:center;padding-top:6px;border-top:1px solid #E1E2DC"><span style="font-size:12px"><b>Next:</b> ' + esc(o.next || '—') + '</span>';
-      h += '<button onclick="' + on(() => setState({ sel: k, view: 'tl' })) + '" style="flex:none;border:1px solid #C9CBC4;background:#FFFFFF;border-radius:6px;padding:4px 9px;cursor:pointer;font-size:11.5px">Timeline →</button></div>';
+      h += '<span style="flex:none;display:flex;gap:6px">' + (isAdmin() && SYNC.who ? '<button onclick="' + on(() => editCard(k)) + '" style="border:1px solid #C9CBC4;background:#FFFFFF;border-radius:6px;padding:4px 9px;cursor:pointer;font-size:11.5px">Edit</button>' : '') + '<button onclick="' + on(() => setState({ sel: k, view: 'tl' })) + '" style="border:1px solid #C9CBC4;background:#FFFFFF;border-radius:6px;padding:4px 9px;cursor:pointer;font-size:11.5px">Timeline →</button></span></div>';
       h += '</article>';
     });
     h += '</div>';
@@ -550,7 +223,7 @@ function renderTimeline(sel) {
       const c = P[k].c, rows = (TL[k] || []).slice().sort((a, b2) => a.s < b2.s ? -1 : a.s > b2.s ? 1 : 0);
       h += '<div style="display:grid;grid-template-columns:' + LBL + 'px 1fr;border-top:1px solid #EEEEEA;margin-top:4px"><div style="display:flex;align-items:center;gap:8px;padding:8px 0 4px"><span style="width:12px;height:12px;border-radius:3px;background:' + c + ';flex:none"></span>' + priBadge(k) + '<span style="font-weight:700;font-size:13px">' + esc(P[k].name) + '</span>' + (sel ? '<button onclick="' + on(() => setState({ view: 'ov' })) + '" style="margin-left:auto;margin-right:12px;flex:none;white-space:nowrap;border:1px solid #C9CBC4;background:#FFFFFF;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:11px">Project card →</button>' : '') + '</div><div></div></div>';
       if (!rows.length) {
-        h += '<div style="display:grid;grid-template-columns:' + LBL + 'px 1fr"><div style="padding:2px 0 8px 20px;font-size:11.5px;color:#6B7075">No plan yet</div><div></div></div>';
+        h += '<div style="display:grid;grid-template-columns:' + LBL + 'px 1fr"><div style="padding:2px 0 8px 20px;font-size:11.5px;color:#6B7075">No plan yet' + (canEdit() ? ' — <button onclick="' + on(() => editTL(null, k)) + '" style="border:0;background:none;padding:0;color:#23699A;cursor:pointer;font-size:11.5px">add the first milestone</button>' : '') + '</div><div></div></div>';
         return;
       }
       if (!sel) {
@@ -563,8 +236,9 @@ function renderTimeline(sel) {
         h += '</div></div>';
         return;
       }
+      if (canEdit()) h += '<div style="padding:2px 0 6px 20px"><button onclick="' + on(() => editTL(null, k)) + '" style="border:1px solid #C9CBC4;background:#FFFFFF;border-radius:6px;padding:3px 9px;cursor:pointer;font-size:11.5px">+ Add milestone / phase</button></div>';
       rows.forEach((r) => {
-        h += '<div style="display:grid;grid-template-columns:' + LBL + 'px 1fr;align-items:center;min-height:30px">';
+        h += '<div' + (canEdit() ? ' onclick="' + on(() => editTL(r, k)) + '" title="click to edit"' : '') + ' style="display:grid;grid-template-columns:' + LBL + 'px 1fr;align-items:center;min-height:30px;' + (canEdit() ? 'cursor:pointer;' : '') + '">';
         h += '<div style="padding:3px 12px 3px 20px;font-size:12px;line-height:1.35"><span' + (r.prop ? ' style="color:#3F444A"' : ' style="font-weight:600"') + '>' + esc(r.name) + '</span>' + (r.note ? '<div style="font-size:11px;color:#9B1C1C;margin-top:1px">' + esc(r.note) + '</div>' : '') + '</div>';
         h += '<div style="position:relative;height:100%;min-height:30px">';
         if (tp !== null) h += '<div style="position:absolute;left:' + tp + '%;top:0;bottom:0;border-left:2px solid #E0A526;z-index:0"></div>';
@@ -581,6 +255,221 @@ function renderTimeline(sel) {
   h += '<div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:14px;font-size:11.5px;color:#4A4F55"><span><span style="display:inline-block;width:2px;height:12px;background:#E0A526;vertical-align:middle;margin-right:6px"></span>today</span><span><span style="display:inline-block;width:10px;height:10px;transform:rotate(45deg);border:2px solid #1B1D1F;margin-right:8px;vertical-align:middle"></span>milestone (hollow = proposed)</span></div>';
   h += '</div></section>';
   return h;
+}
+
+
+/* ================= SYNC (Google Sheet via Apps Script) ================= */
+const SYNC_URL = 'https://script.google.com/macros/s/AKfycbxTztbaCbJcSNQXs0NOU6vpHgWZr8JIqVwR1521uq4PRwvuGz6unBV9EEH4BrhwzPlW/exec';
+const SYNC = { key: null, role: null, who: null, rev: 0, status: 'idle', err: '', pendingDoc: null, log: null, showLog: false };
+(function () {
+  try {
+    const m = location.hash.match(/k=([\w-]+)/);
+    if (m) { localStorage.setItem('planner_key', m[1]); history.replaceState(null, '', location.pathname + location.search); }
+    SYNC.key = localStorage.getItem('planner_key');
+    SYNC.who = localStorage.getItem('planner_who');
+  } catch (e) {}
+})();
+const canEdit = () => !!SYNC.role && !!SYNC.who;
+const isAdmin = () => SYNC.role === 'admin';
+const newId = (pfx) => pfx + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+
+function applyDoc(doc) {
+  if (!doc) return;
+  const strip = (x) => { const o = Object.assign({}, x); delete o.id; delete o.by; delete o.at; return o; };
+  P = {}; (doc.P || []).forEach((x) => P[x.id] = strip(x));
+  OV = {}; (doc.OV || []).forEach((x) => OV[x.id] = Object.assign(strip(x), { _by: x.by, _at: x.at }));
+  B = (doc.B || []).map((x) => Object.assign({}, x));
+  PB = (doc.PB || []).map((x) => Object.assign({}, x));
+  VR = (doc.VR || []).map((x) => Object.assign({}, x));
+  Q = (doc.Q || []).map((x) => [x.p, x.name, x.need, x.now, x.wt, x.id, x]);
+  TL = {}; (doc.TL || []).forEach((x) => (TL[x.p] = TL[x.p] || []).push(Object.assign({}, x)));
+}
+async function syncGet(force) {
+  if (!SYNC.key) return;
+  try {
+    const r = await fetch(SYNC_URL + '?key=' + encodeURIComponent(SYNC.key) + (force ? '' : '&since=' + SYNC.rev) + '&t=' + Date.now());
+    const j = await r.json();
+    if (!j.ok) { SYNC.status = 'error'; SYNC.err = j.error || 'error'; if (j.error === 'bad key') SYNC.role = null; render(); return; }
+    const first = !SYNC.role; SYNC.role = j.role;
+    if (j.same) { if (SYNC.status !== 'ok' || first) { SYNC.status = 'ok'; render(); } return; }
+    SYNC.rev = j.rev;
+    if (document.getElementById('modal')) { SYNC.pendingDoc = j.data; SYNC.status = 'ok'; return; }   // don't redraw under an open edit form
+    applyDoc(j.data); SYNC.status = j.data ? 'ok' : 'empty'; render();
+    if (SYNC.showLog) loadLog();
+  } catch (e) { SYNC.status = 'offline'; render(); }
+}
+async function syncPost(ops) {
+  SYNC.status = 'saving'; render();
+  try {
+    const r = await fetch(SYNC_URL, { method: 'POST', body: JSON.stringify({ key: SYNC.key, who: SYNC.who, ops }) });
+    const j = await r.json();
+    if (j.data) { applyDoc(j.data); SYNC.rev = j.rev; }
+    SYNC.status = j.ok ? 'ok' : 'error'; SYNC.err = (j.errs || []).join('; ');
+    if (!j.ok) alert('Not saved: ' + SYNC.err);
+    render(); if (SYNC.showLog) loadLog();
+    return j.ok;
+  } catch (e) { SYNC.status = 'offline'; render(); alert('Could not reach the planner sheet — nothing was saved. Check your connection and try again.'); return false; }
+}
+async function loadLog() {
+  try { const r = await fetch(SYNC_URL + '?action=log&key=' + encodeURIComponent(SYNC.key) + '&t=' + Date.now()); const j = await r.json(); SYNC.log = j.log || []; } catch (e) { SYNC.log = null; }
+  render();
+}
+setInterval(() => { if (!document.hidden) syncGet(); }, 5000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) syncGet(); });
+
+/* ---------- edit forms ---------- */
+const PERSON_OPTS = () => Object.keys(PEOPLE).map((k) => [k, PEOPLE[k].name]);
+const PROJ_OPTS = () => Object.keys(P).map((k) => [k, P[k].name]);
+function closeModal() {
+  const m = document.getElementById('modal'); if (m) m.remove();
+  if (SYNC.pendingDoc) { applyDoc(SYNC.pendingDoc); SYNC.pendingDoc = null; render(); }
+}
+// fields: [key, label, type, value, opts]  types: text, area, date, num, sel, check
+function openForm(title, fields, onSave, onDelete, note) {
+  closeModal();
+  const inp = 'width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid #C9CBC4;border-radius:6px;font:inherit;font-size:13px;background:#FFFFFF';
+  let h = '<div style="position:fixed;inset:0;background:rgba(20,22,24,.35);display:flex;align-items:flex-start;justify-content:center;padding:6vh 16px;z-index:50;overflow:auto" onclick="if(event.target===this)closeModal()">';
+  h += '<form id="mform" style="background:#FFFFFF;border-radius:12px;padding:18px 20px;width:520px;max-width:100%;box-shadow:0 12px 40px rgba(0,0,0,.2);font-family:\'IBM Plex Sans\',system-ui,sans-serif;font-size:13px;color:#1B1D1F;display:flex;flex-direction:column;gap:10px">';
+  h += '<div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0;font-size:16px">' + esc(title) + '</h2><button type="button" onclick="closeModal()" style="border:0;background:none;font-size:20px;cursor:pointer;line-height:1">×</button></div>';
+  if (note) h += '<div style="font-size:11.5px;color:#5F6368">' + esc(note) + '</div>';
+  fields.forEach(([k, label, type, val, opts]) => {
+    h += '<label style="display:flex;flex-direction:' + (type === 'check' ? 'row-reverse;justify-content:flex-end;align-items:center' : 'column') + ';gap:4px"><span style="font-size:11.5px;font-weight:600;color:#3F444A">' + esc(label) + '</span>';
+    if (type === 'area') h += '<textarea name="' + k + '" rows="' + (opts || 3) + '" style="' + inp + ';resize:vertical">' + esc(val) + '</textarea>';
+    else if (type === 'sel') h += '<select name="' + k + '" style="' + inp + '">' + opts.map(([v, l]) => '<option value="' + esc(v) + '"' + (String(v) === String(val) ? ' selected' : '') + '>' + esc(l) + '</option>').join('') + '</select>';
+    else if (type === 'check') h += '<input type="checkbox" name="' + k + '"' + (val ? ' checked' : '') + '>';
+    else h += '<input name="' + k + '" type="' + (type === 'num' ? 'number' : type === 'date' ? 'date' : 'text') + '"' + (type === 'num' ? ' min="1" step="1"' : '') + ' value="' + esc(val == null ? '' : val) + '" style="' + inp + '">';
+    h += '</label>';
+  });
+  h += '<div style="display:flex;gap:8px;justify-content:space-between;margin-top:6px"><span>' + (onDelete ? '<button type="button" id="mdel" style="border:1px solid #E5B4B4;background:#FFFFFF;color:#9B1C1C;border-radius:6px;padding:7px 12px;cursor:pointer;font:inherit">Delete</button>' : '') + '</span>';
+  h += '<span style="display:flex;gap:8px"><button type="button" onclick="closeModal()" style="border:1px solid #C9CBC4;background:#FFFFFF;border-radius:6px;padding:7px 12px;cursor:pointer;font:inherit">Cancel</button><button type="submit" style="border:0;background:#1B1D1F;color:#FFFFFF;border-radius:6px;padding:7px 16px;cursor:pointer;font:inherit;font-weight:600">Save</button></span></div>';
+  h += '<div style="font-size:11px;color:#6B7075">Saved as ' + esc(SYNC.who || '?') + '. Everyone sees the change within a few seconds.</div></form></div>';
+  const d = document.createElement('div'); d.id = 'modal'; d.innerHTML = h; document.body.appendChild(d);
+  const f = document.getElementById('mform');
+  f.onsubmit = async (e) => {
+    e.preventDefault();
+    const v = {}; fields.forEach(([k, , type]) => { const el = f.elements[k]; v[k] = type === 'check' ? el.checked : type === 'num' ? Number(el.value) : el.value.trim(); });
+    const ops = onSave(v); if (!ops) return;
+    const m = document.getElementById('modal'); if (m) m.remove();
+    await syncPost(ops); if (SYNC.pendingDoc) SYNC.pendingDoc = null;
+  };
+  if (onDelete) document.getElementById('mdel').onclick = async () => { if (!confirm('Delete this item? (It stays in the Sheet backups.)')) return; const m = document.getElementById('modal'); if (m) m.remove(); await syncPost(onDelete()); };
+  const first = f.querySelector('input,textarea,select'); if (first) first.focus();
+}
+const clean = (o) => { Object.keys(o).forEach((k) => (o[k] === '' || o[k] === false || o[k] == null) && delete o[k]); return o; };
+
+function editBlock(x) {
+  const isNew = !x, cur = x || { lane: (Object.keys(PEOPLE).find((k) => PEOPLE[k].name === SYNC.who) || 'yoni'), date: DAYS[Math.max(0, TODAY)] ? DAYS[Math.max(0, TODAY)].iso : START, h: 0, len: 1, p: state.sel || 'team', t: '' };
+  openForm(isNew ? 'Add a task' : 'Edit task', [
+    ['t', 'What', 'area', cur.t, 2],
+    ['lane', 'Who', 'sel', cur.lane, PERSON_OPTS()],
+    ['p', 'Project', 'sel', cur.p, PROJ_OPTS()],
+    ['date', 'Day (Sun–Thu)', 'date', cur.date],
+    ['h', 'Starts', 'sel', cur.h, [[0, 'Morning'], [1, 'Afternoon']]],
+    ['len', 'Length (half-days)', 'num', cur.len],
+    ['st', 'Status', 'sel', cur.st || '', [['', 'Planned'], ['done', 'Done ✓'], ['blocked', 'Blocked / slipping ⚠']]],
+    ['note', 'Note (why it moved, what’s blocking…)', 'text', cur.note || ''],
+    ['prop', 'Proposed — not confirmed yet (dashed)', 'check', !!cur.prop]
+  ], (v) => {
+    if (!v.t) { alert('Write what the task is.'); return null; }
+    if (IDX[v.date] == null) { alert('Pick a working day (Sun–Thu) between ' + START + ' and ' + END + '.'); return null; }
+    const item = clean(Object.assign({}, isNew ? {} : x, v, { h: Number(v.h), len: Math.max(1, v.len || 1) }));
+    delete item.id; delete item.by; delete item.at;
+    const id = isNew ? newId('b') : x.id;
+    const what = PEOPLE[item.lane].name + ' · ' + DAYS[IDX[item.date]].day + ' ' + DAYS[IDX[item.date]].date + ' · ' + item.t;
+    let s = what;
+    if (!isNew) { const ch = []; if (x.date !== item.date || x.h !== item.h) ch.push('moved from ' + x.date + (x.h ? ' PM' : ' AM')); if (x.lane !== item.lane) ch.push('was ' + PEOPLE[x.lane].name); if ((x.st || '') !== (item.st || '')) ch.push(item.st ? 'marked ' + item.st : 'reopened'); if (ch.length) s += ' (' + ch.join('; ') + ')'; }
+    if (item.note) s += ' — ' + item.note;
+    return [{ op: 'put', coll: 'B', id, item, s }];
+  }, isNew ? null : () => [{ op: 'del', coll: 'B', id: x.id, s: PEOPLE[x.lane].name + ' · ' + x.date + ' · ' + x.t }]);
+}
+function editQ(row) {
+  const isNew = !row, x = row ? row[6] : { p: state.sel || 'team', name: '', need: '', now: '' };
+  openForm(isNew ? 'Add to “Not on the calendar yet”' : 'Edit item', [
+    ['name', 'Item', 'text', x.name],
+    ['p', 'Project', 'sel', x.p, PROJ_OPTS()],
+    ['need', 'Details / what it’s waiting on', 'area', x.need, 3],
+    ['now', 'Status tag (short, e.g. “no owner”, “waiting”)', 'text', x.now]
+  ], (v) => {
+    if (!v.name) { alert('Give the item a name.'); return null; }
+    const item = { p: v.p, name: v.name, need: v.need, now: v.now || 'open', wt: (x.wt && x.wt !== x.now) ? x.wt : (v.now || 'open') };
+    return [{ op: 'put', coll: 'Q', id: isNew ? newId('q') : x.id, item, s: P[v.p].name + ' · ' + v.name + (v.now ? ' [' + v.now + ']' : '') }];
+  }, isNew ? null : () => [{ op: 'del', coll: 'Q', id: x.id, s: x.name }]);
+}
+function editTL(r, k) {
+  const isNew = !r, x = r || { p: k, kind: 'ms', name: '', s: todayIso, e: todayIso };
+  openForm(isNew ? 'Add to timeline — ' + P[k].name : 'Edit timeline item', [
+    ['name', 'Name', 'text', x.name],
+    ['kind', 'Type', 'sel', x.kind, [['ms', 'Milestone (one date)'], ['ph', 'Phase (start → end)']]],
+    ['s', 'Date / start', 'date', x.s],
+    ['e', 'End (phases only)', 'date', x.e],
+    ['note', 'Note (shown in red under the name)', 'text', x.note || ''],
+    ['prop', 'Proposed — not confirmed yet', 'check', !!x.prop]
+  ], (v) => {
+    if (!v.name || !v.s) { alert('Name and date are needed.'); return null; }
+    const item = clean({ p: x.p, kind: v.kind, name: v.name, s: v.s, e: v.kind === 'ms' ? v.s : (v.e && v.e >= v.s ? v.e : v.s), note: v.note, prop: v.prop ? 1 : 0 });
+    return [{ op: 'put', coll: 'TL', id: isNew ? newId('t') : x.id, item, s: P[x.p].name + ' · ' + v.name + ' · ' + v.s }];
+  }, isNew ? null : () => [{ op: 'del', coll: 'TL', id: x.id, s: P[x.p].name + ' · ' + x.name }]);
+}
+function editCard(k) {
+  const o = OV[k] || {};
+  openForm('Edit project — ' + P[k].name, [
+    ['name', 'Project name', 'text', P[k].name],
+    ['pri', 'Priority', 'sel', P[k].pri || 3, [[1, 'P1 · Top'], [2, 'P2 · High'], [3, 'P3 · Normal'], [4, 'P4 · Parked']]],
+    ['status', 'Status', 'text', o.status || ''],
+    ['owner', 'Owner', 'text', o.owner || ''],
+    ['who', 'With', 'text', o.who || ''],
+    ['horizon', 'Horizon', 'text', o.horizon || ''],
+    ['goals', 'Objectives (one per line)', 'area', (o.goals || []).join('\n'), 3],
+    ['plan', 'Plan (one step per line:  step | duration)', 'area', (o.plan || []).map((x) => x[0] + ' | ' + x[1]).join('\n'), 5],
+    ['next', 'Next', 'area', o.next || '', 2]
+  ], (v) => {
+    const card = { owner: v.owner, who: v.who, horizon: v.horizon, status: v.status, next: v.next,
+      goals: v.goals.split('\n').map((s) => s.trim()).filter(Boolean),
+      plan: v.plan.split('\n').map((s) => s.trim()).filter(Boolean).map((s) => { const i = s.lastIndexOf('|'); return i < 0 ? [s, ''] : [s.slice(0, i).trim(), s.slice(i + 1).trim()]; }) };
+    const proj = Object.assign({}, P[k], { name: v.name || P[k].name, pri: Number(v.pri) });
+    const ops = [{ op: 'put', coll: 'OV', id: k, item: card, s: proj.name + ' card: ' + (v.status || '') + (v.next ? ' · next: ' + v.next.slice(0, 80) : '') }];
+    if (proj.name !== P[k].name || proj.pri !== P[k].pri) ops.push({ op: 'put', coll: 'P', id: k, item: proj, s: proj.name + (proj.pri !== P[k].pri ? ' → P' + proj.pri : '') + (proj.name !== P[k].name ? ' (renamed from ' + P[k].name + ')' : '') });
+    return ops;
+  });
+}
+function pickWho() {
+  openForm('Who are you?', [['who', 'Your name (shown on every change you make)', 'sel', SYNC.who || '', [['', '— pick —']].concat(['Yoni', 'Nadav', 'Dorin', 'Or', 'Shimrit', 'Technician'].map((n) => [n, n]))]],
+    (v) => { if (!v.who) { alert('Pick your name.'); return null; } SYNC.who = v.who; try { localStorage.setItem('planner_who', v.who); } catch (e) {} closeModal(); render(); return null; }, null,
+    'Saved on this device only. You can change it later from the line under the title.');
+}
+function applyUpdate() {
+  openForm('Apply an update from PM', [['json', 'Paste the update PM gave you', 'area', '', 8]], (v) => {
+    let u; try { u = JSON.parse(v.json); } catch (e) { alert('That isn’t a valid update (not JSON).'); return null; }
+    const ops = (u.ops || []).filter((o) => o && (o.op === 'put' || o.op === 'del') && o.coll && o.id);
+    if (!ops.length) { alert('No changes found in that update.'); return null; }
+    if (!confirm((u.note ? u.note + '\n\n' : '') + ops.length + ' change(s):\n\n' + ops.map((o) => '• ' + (o.op === 'del' ? 'DELETE ' : '') + (o.s || o.coll + ' ' + o.id)).join('\n') + '\n\nApply?')) return null;
+    return ops.map((o) => Object.assign({}, o, { s: '[PM] ' + (o.s || '') }));
+  }, null, 'PM (Claude) can’t write to the Sheet directly. It gives you a block of text; paste it here, check the list of changes, and apply.');
+}
+function syncBar() {
+  const mono = 'font-family:\'IBM Plex Mono\',monospace;';
+  if (!SYNC.key) return '<div style="margin-top:6px;font-size:12px;color:#9B1C1C">No access key on this device — open the planner with your personal link.</div>';
+  const st = { ok: ['#2F855A', 'Synced'], saving: ['#B7791F', 'Saving…'], offline: ['#9B1C1C', 'Offline — showing last loaded data'], error: ['#9B1C1C', 'Error: ' + SYNC.err], empty: ['#B7791F', 'Sheet is empty'], idle: ['#6B7075', 'Connecting…'] }[SYNC.status] || ['#6B7075', SYNC.status];
+  const lk = (fn, label) => '<button onclick="' + on(fn) + '" style="border:0;background:none;padding:0;color:#23699A;cursor:pointer;font-size:12px;text-decoration:underline">' + label + '</button>';
+  let h = '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font-size:12px;color:#4A4F55">';
+  h += '<span style="display:inline-flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:' + st[0] + '"></span>' + esc(st[1]) + '</span>';
+  if (SYNC.role) {
+    h += '<span>You: <b>' + esc(SYNC.who || '—') + '</b> ' + lk(pickWho, 'change') + (isAdmin() ? ' <span style="' + mono + 'font-size:10.5px;color:#6B7075">(admin)</span>' : '') + '</span>';
+    h += lk(() => { SYNC.showLog = !SYNC.showLog; if (SYNC.showLog) loadLog(); else render(); }, SYNC.showLog ? 'Hide recent changes' : 'Recent changes');
+    if (isAdmin()) h += lk(applyUpdate, 'Apply PM update');
+  }
+  return h + '</div>';
+}
+function logPanel() {
+  if (!SYNC.showLog) return '';
+  let h = '<section style="background:#FFFFFF;border:1px solid #E1E2DC;border-radius:12px;padding:14px 16px"><h2 style="margin:0 0 8px;font-size:15px">Recent changes</h2>';
+  if (!SYNC.log) return h + '<div style="color:#6B7075">Loading…</div></section>';
+  if (!SYNC.log.length) return h + '<div style="color:#6B7075">No changes yet.</div></section>';
+  SYNC.log.slice(0, 40).forEach((r) => {
+    const d = new Date(r.t);
+    h += '<div style="display:grid;grid-template-columns:96px 70px 1fr;gap:10px;padding:5px 0;border-top:1px solid #EEEEEA;font-size:12px"><span style="font-family:\'IBM Plex Mono\',monospace;color:#5F6368">' + d.getDate() + ' ' + MON[d.getMonth()] + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + '</span><b>' + esc(r.who) + '</b><span>' + esc(r.op) + ' · ' + esc(r.s || '') + '</span></div>';
+  });
+  return h + '</section>';
 }
 
 function render() {
@@ -601,7 +490,7 @@ function render() {
   // header
   h += '<header style="display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:14px;min-height:62px"><div>';
   h += '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#5F6368">Novella · Modi\'in R&amp;D</div>';
-  h += '<h1 style="margin:4px 0 0;font-size:26px;font-weight:700;letter-spacing:-.01em">Who is doing what, when</h1></div>';
+  h += '<h1 style="margin:4px 0 0;font-size:26px;font-weight:700;letter-spacing:-.01em">Who is doing what, when</h1>' + syncBar() + '</div>';
   h += '<nav aria-label="Views" style="display:flex;border:1px solid #C9CBC4;border-radius:8px;overflow:hidden;background:#FFFFFF;flex:none">';
   [['ov', 'Projects'], ['cal', 'Calendar'], ['tl', 'Timeline'], ['pl', 'Platforms']].forEach(([v, l], i) => { h += '<button onclick="' + on(() => setState({ view: v })) + '" aria-pressed="' + (view === v) + '" style="' + seg(view === v, i === 0) + '">' + l + '</button>'; });
   h += '</nav></header>';
@@ -616,6 +505,7 @@ function render() {
   h += '<button onclick="' + on(() => setState({ past: !state.past })) + '" aria-pressed="' + !!state.past + '" style="' + chip(!!state.past) + '">Past weeks</button>';
   h += '<button onclick="' + on(() => setState({ routine: !routineOn })) + '" aria-pressed="' + routineOn + '" style="' + chip(routineOn) + '">Routine</button>';
   h += '<button onclick="' + on(() => setState({ load: !loadOn })) + '" aria-pressed="' + loadOn + '" style="' + chip(loadOn) + '">Load</button>';
+  if (canEdit()) h += '<button onclick="' + on(() => editBlock(null)) + '" style="' + chip(true, '#2B6CB0') + 'margin-left:auto">+ Add task</button>';
   h += '</div>';
   }
 
@@ -650,7 +540,9 @@ function render() {
   });
   h += '</aside><main style="flex:999 1 640px;min-width:0;display:flex;flex-direction:column;gap:16px">';
 
-  if (view === 'ov') h += renderOverview(sel);
+  h += logPanel();
+  if (!Object.keys(P).length) h += '<section style="background:#FFFFFF;border:1px solid #E1E2DC;border-radius:12px;padding:28px;text-align:center;color:#4A4F55;font-size:14px">' + (!SYNC.key ? 'This planner opens with a personal link. Ask Yoni for yours.' : SYNC.status === 'empty' ? 'The planner sheet is empty.' : SYNC.status === 'error' ? 'Couldn’t load the plan: ' + esc(SYNC.err) : 'Loading the plan…') + '</section>';
+  else if (view === 'ov') h += renderOverview(sel);
   else if (tlv) h += renderTimeline(sel);
   else if (view === 'pl') h += renderPlatforms(sel);
   else for (let w = state.past ? 0 : CURW; w < NWEEKS; w++) {
@@ -686,8 +578,9 @@ function render() {
         h += '<div title="' + esc(pp.name + ' — routine: ' + pp.routineText) + '" style="' + pos + 'margin:2px;padding:3px 6px;border-radius:6px;display:flex;align-items:center;gap:6px;min-width:0;position:relative;z-index:1;background:#ECEDE8;color:#3F444A;font-size:10.5px;opacity:' + (sel ? .3 : 1) + '"><span style="width:16px;height:16px;border-radius:50%;background:' + pp.c + ';color:#FFFFFF;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none">' + pp.name[0] + '</span><span style="overflow-wrap:anywhere">' + esc(pp.name) + ' · routine</span></div>';
         return;
       }
-      const x = it.x, pp = PEOPLE[x.lane], c = P[x.p].c, dim = sel && x.p !== sel, hit = sel && x.p === sel;
-      h += '<div class="blk' + (x.prop ? ' prop' : '') + '" title="' + esc(pp.name + ' · ' + P[x.p].name + ' — ' + x.t + ' (' + fmt(x.len * .5) + ' d)' + (x.prop ? ' · proposed' : '')) + '" style="' + pos + 'background:' + c + ';opacity:' + (dim ? .15 : 1) + ';' + (hit ? 'box-shadow:0 0 0 2px #FFFFFF,0 0 0 4px ' + c + ';' : '') + '"><span class="dot" style="background:' + pp.c + '">' + pp.name[0] + '</span><span class="tx">' + esc(x.t) + '</span></div>';
+      const x = it.x, pp = PEOPLE[x.lane] || PEOPLE.yoni, c = (P[x.p] || { c: '#999' }).c, dim = sel && x.p !== sel, hit = sel && x.p === sel;
+      const done = x.st === 'done', blk = x.st === 'blocked';
+      h += '<div class="blk' + (x.prop ? ' prop' : '') + '"' + (canEdit() ? ' onclick="' + on(() => editBlock(x)) + '"' : '') + ' title="' + esc(pp.name + ' · ' + (P[x.p] || { name: '?' }).name + ' — ' + x.t + ' (' + fmt(x.len * .5) + ' d)' + (x.prop ? ' · proposed' : '') + (x.st ? ' · ' + x.st : '') + (x.note ? '\n' + x.note : '') + (x.by ? '\nlast change: ' + x.by : '') + (canEdit() ? '\nclick to edit' : '')) + '" style="' + pos + 'background:' + c + ';opacity:' + (dim ? .15 : done ? .5 : 1) + ';' + (canEdit() ? 'cursor:pointer;' : '') + (hit ? 'box-shadow:0 0 0 2px #FFFFFF,0 0 0 4px ' + c + ';' : '') + (blk ? 'box-shadow:0 0 0 3px #E53E3E;' : '') + '"><span class="dot" style="background:' + pp.c + '">' + (done ? '✓' : blk ? '!' : pp.name[0]) + '</span><span class="tx"' + (done ? ' style="text-decoration:line-through"' : '') + '>' + esc(x.t) + (x.note ? '<span style="display:block;font-weight:400;opacity:.9;font-size:10.5px;margin-top:2px">' + esc(x.note) + '</span>' : '') + '</span></div>';
     });
     h += '</div>';
 
@@ -723,9 +616,11 @@ function render() {
   h += '<section style="background:#FFFFFF;border:1px solid #E1E2DC;border-radius:12px;padding:16px 18px">';
   h += '<h2 style="margin:0;font-size:17px">' + (tech ? 'With a technician: what moves' : 'Not on the calendar yet') + '</h2>';
   h += '<p style="margin:6px 0 10px;line-height:1.5;color:#2D3135">' + (tech ? 'The technician takes the autoclave-indicator runs and the bubble-reactor build off Nadav. Most other items still need an owner or a gate to clear, not hands.' : 'Planned work with no slot yet — gated, waiting, or without an owner.') + '</p>';
-  Q.forEach(([p, name, need, now, wt]) => {
-    const v = tech ? wt : now, good = v.indexOf('on calendar') === 0, red = v === 'needs Nadav' || v === 'plan cover';
-    h += '<div style="display:grid;grid-template-columns:12px minmax(0,1fr) 130px;gap:10px;padding:8px 0;border-top:1px solid #EEEEEA;align-items:start;opacity:' + (sel && p !== sel ? .3 : 1) + '"><span style="width:10px;height:10px;border-radius:3px;margin-top:4px;background:' + P[p].c + '"></span>';
+  if (canEdit()) h += '<button onclick="' + on(() => editQ(null)) + '" style="' + chip(false) + 'margin:0 0 8px">+ Add item</button>';
+  Q.forEach((row) => {
+    const [p, name, need, now, wt] = row;
+    const v = (tech ? wt : now) || '', good = v.indexOf('on calendar') === 0, red = v === 'needs Nadav' || v === 'plan cover' || v === 'clash';
+    h += '<div' + (canEdit() ? ' onclick="' + on(() => editQ(row)) + '" title="click to edit"' : '') + ' style="display:grid;grid-template-columns:12px minmax(0,1fr) 130px;gap:10px;padding:8px 0;border-top:1px solid #EEEEEA;align-items:start;' + (canEdit() ? 'cursor:pointer;' : '') + 'opacity:' + (sel && p !== sel ? .3 : 1) + '"><span style="width:10px;height:10px;border-radius:3px;margin-top:4px;background:' + (P[p] || { c: '#999' }).c + '"></span>';
     h += '<span style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-weight:600">' + esc(name) + '</span><span style="font-size:11.5px;color:#5F6368;line-height:1.45">' + esc(need) + '</span></span>';
     h += '<span style="text-align:right;font-family:\'IBM Plex Mono\',monospace;font-size:11.5px;padding:2px 6px;border-radius:4px;justify-self:end;' + (good ? 'background:#E3F2E8;color:#1D5E36;' : red ? 'background:#FDE3E3;color:#9B1C1C;' : 'background:#EEEEEA;color:#3F444A;') + '">' + esc(v) + '</span></div>';
   });
@@ -735,6 +630,7 @@ function render() {
   document.getElementById('app').innerHTML = h;
 }
 render();
+if (SYNC.key) { syncGet(true).then(() => { if (SYNC.role && !SYNC.who) pickWho(); }); }
 </script>
 </body>
 </html>
