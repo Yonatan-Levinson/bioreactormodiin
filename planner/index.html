@@ -14,6 +14,7 @@ button{font-family:inherit}
 .blk .tx{min-width:0;overflow-wrap:anywhere;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .pbx{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .blk.prop{outline:2px dashed rgba(255,255,255,.85);outline-offset:-4px}
+.cell:hover{background:rgba(43,108,176,.06)}
 .dot{width:20px;height:20px;border-radius:50%;border:1.5px solid #FFFFFF;box-sizing:border-box;color:#FFFFFF;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none;margin-top:1px}
 </style>
 </head>
@@ -40,7 +41,7 @@ const PEOPLE = {
   nadav: { name: 'Nadav', c: '#B7410E', routine: 1, cap: 5, routineText: 'daily sampling & checks' },
   dorin: { name: 'Dorin', c: '#2F855A', routine: 1, cap: 5, routineText: 'media prep, housekeeping' },
   or:    { name: 'Or',    c: '#6B46C1', routine: 0, cap: null },
-  tech:  { name: 'Technician', c: '#4A5568', routine: 0, cap: 5 }
+  tech:  { name: 'Technician', c: '#4A5568', routine: 0, cap: 5, hidden: 1 } // retired 12 Nov; kept so old items still render
 };
 
 // Plan data lives in the Google Sheet (see SYNC below) and is loaded on start.
@@ -53,7 +54,8 @@ let B = [], PB = [], Q = [], TL = {}, OV = {};
 // ---- Bioreactor vessels (Platforms view + vessel filter) ----
 // v = vessel, or 'TBC' until assigned. fam = which kind it needs (shown while TBC).
 // Calendar blocks link to a run with {run:'id'}, so assigning a vessel here updates everything.
-const VESSELS = ['MF1', 'MF2', 'MF3', 'DG1', 'DG2', 'DG3', 'DG4'];
+const VESSELS = ['MF1', 'MF2', 'MF3', 'V1', 'V2', 'V3', 'V4']; // V1–V4 = Dasgip stations; DG5, DG6… are run IDs
+// hold: 1 = vessel blocked but not running cells (e.g. autoclave validation). Drawn hatched; not counted as utilization.
 let VR = [];
 
 /* ================= ENGINE ================= */
@@ -162,8 +164,8 @@ function renderPlatforms(sel) {
     if (ax.tp !== null) h += '<div style="position:absolute;left:' + ax.tp + '%;top:0;bottom:0;border-left:2px solid #E0A526"></div>';
     runs.forEach((r) => {
       const c = P[r.p].c, l = ax.pct(r.s), w = Math.max(ax.pct(r.e, 1) - l, 0.6), dim = sel && r.p !== sel;
-      const lab = r.t + (tbc ? ' · needs ' + r.fam : '');
-      h += '<div title="' + esc(lab + ' — ' + r.s + ' → ' + r.e + (r.prop ? ' (proposed)' : '')) + '" style="position:absolute;left:' + l + '%;width:' + w + '%;top:5px;bottom:5px;border-radius:5px;background:' + c + ';opacity:' + (dim ? .2 : 1) + ';color:#FFFFFF;font-size:10.5px;font-weight:600;padding:0 6px;display:flex;align-items:center;overflow:hidden;white-space:nowrap;' + (r.prop ? 'outline:2px dashed rgba(255,255,255,.85);outline-offset:-4px;' : '') + '">' + esc(lab) + '</div>';
+      const lab = (r.hold ? 'Held: ' : '') + r.t + (tbc ? ' · needs ' + r.fam : '');
+      h += '<div title="' + esc(lab + ' — ' + r.s + ' → ' + r.e + (r.prop ? ' (proposed)' : '')) + '" style="position:absolute;left:' + l + '%;width:' + w + '%;top:5px;bottom:5px;border-radius:5px;background:' + (r.hold ? 'repeating-linear-gradient(135deg,' + c + '33 0 6px,#FFFFFF 6px 12px);border:2px solid ' + c : c) + ';opacity:' + (dim ? .2 : 1) + ';color:' + (r.hold ? '#1B1D1F' : '#FFFFFF') + ';font-size:10.5px;font-weight:600;padding:0 6px;display:flex;align-items:center;overflow:hidden;white-space:nowrap;' + (r.prop ? 'outline:2px dashed rgba(255,255,255,.85);outline-offset:-4px;' : '') + '">' + esc(lab) + '</div>';
     });
     h += '</div></div>';
   });
@@ -171,30 +173,30 @@ function renderPlatforms(sel) {
 
   const months = []; { const d = new Date(START + 'T12:00:00'); d.setDate(1); while (d.getTime() <= Date.parse(END)) { months.push([d.getFullYear(), d.getMonth()]); d.setMonth(d.getMonth() + 1); } }
   const used = (v, y, m) => {
-    const z = new Date(y, m + 1, 0, 12); let tot = 0, conf = 0, prop = 0;
+    const z = new Date(y, m + 1, 0, 12); let tot = 0, conf = 0, prop = 0, held = 0;
     for (const d = new Date(y, m, 1, 12); d <= z; d.setDate(d.getDate() + 1)) {
       const iso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
       if (iso < START || iso > END) continue; tot++;
-      const hit = VR.filter((r) => r.v === v && r.s <= iso && iso <= r.e);
-      if (hit.some((r) => !r.prop)) conf++; else if (hit.length) prop++;
+      const all = VR.filter((r) => r.v === v && r.s <= iso && iso <= r.e), hit = all.filter((r) => !r.hold);
+      if (hit.some((r) => !r.prop)) conf++; else if (hit.length) prop++; else if (all.length) held++;
     }
-    return { tot, conf, prop };
+    return { tot, conf, prop, held };
   };
   h += '<section style="background:#FFFFFF;border:1px solid #E1E2DC;border-radius:12px;padding:14px 16px;overflow-x:auto"><h2 style="margin:0 0 4px;font-size:16px">Utilization by month</h2><p style="margin:0 0 10px;font-size:12px;color:#5F6368">Share of calendar days each vessel is booked: confirmed, then +proposed in grey.</p>';
   h += '<table style="border-collapse:collapse;font-size:12.5px;min-width:560px"><tr><th style="text-align:left;padding:4px 10px 4px 0">Vessel</th>' + months.map(([y, m]) => '<th style="text-align:right;padding:4px 10px;' + mono + 'font-weight:500">' + MON[m] + '</th>').join('') + '</tr>';
-  let tCap = 0, tConf = 0, tProp = 0;
+  let tCap = 0, tConf = 0, tProp = 0, tHeld = 0;
   VESSELS.forEach((v) => {
     h += '<tr style="border-top:1px solid #EEEEEA"><td style="padding:5px 10px 5px 0;font-weight:700">' + v + '</td>';
     months.forEach(([y, m]) => {
-      const u = used(v, y, m); tCap += u.tot; tConf += u.conf; tProp += u.prop;
+      const u = used(v, y, m); tCap += u.tot; tConf += u.conf; tProp += u.prop; tHeld += u.held;
       const pc = u.tot ? Math.round(u.conf / u.tot * 100) : 0, pp = u.tot ? Math.round(u.prop / u.tot * 100) : 0;
-      h += '<td style="text-align:right;padding:5px 10px;' + mono + (pc ? 'font-weight:600' : 'color:#9AA0A6') + '">' + pc + '%' + (pp ? '<span style="color:#9AA0A6;font-weight:400"> +' + pp + '</span>' : '') + '</td>';
+      h += '<td style="text-align:right;padding:5px 10px;' + mono + (pc ? 'font-weight:600' : 'color:#9AA0A6') + '">' + pc + '%' + (pp ? '<span style="color:#9AA0A6;font-weight:400"> +' + pp + '</span>' : '') + (u.held ? '<span style="color:#8A5A00;font-weight:400" title="held, not running"> h' + Math.round(u.held / u.tot * 100) + '</span>' : '') + '</td>';
     });
     h += '</tr>';
   });
   h += '</table>';
   const nT = VR.filter((r) => r.v === 'TBC').length;
-  h += '<p style="margin:10px 0 0;font-size:12px;color:#4A4F55">All vessels, whole horizon: <b>' + Math.round(tConf / tCap * 100) + '%</b> confirmed, +' + Math.round(tProp / tCap * 100) + '% proposed.' + (nT ? ' <span style="color:#9B1C1C">' + nT + ' run' + (nT > 1 ? 's' : '') + ' not yet assigned to a vessel — not counted above.</span>' : '') + '</p></section>';
+  h += '<p style="margin:10px 0 0;font-size:12px;color:#4A4F55">All vessels, whole horizon: <b>' + Math.round(tConf / tCap * 100) + '%</b> confirmed, +' + Math.round(tProp / tCap * 100) + '% proposed' + (tHeld ? ', ' + Math.round(tHeld / tCap * 100) + '% held (blocked, not running — h in the table)' : '') + '.' + (nT ? ' <span style="color:#9B1C1C">' + nT + ' run' + (nT > 1 ? 's' : '') + ' not yet assigned to a vessel — not counted above.</span>' : '') + '</p></section>';
   return h;
 }
 
@@ -330,7 +332,11 @@ setInterval(() => { if (!document.hidden) syncGet(); }, 5000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) syncGet(); });
 
 /* ---------- edit forms ---------- */
-const PERSON_OPTS = () => Object.keys(PEOPLE).map((k) => [k, PEOPLE[k].name]);
+const LANES = () => Object.keys(PEOPLE).filter((k) => !PEOPLE[k].hidden);
+const PERSON_OPTS = () => LANES().map((k) => [k, PEOPLE[k].name]);
+const whoOf = (x) => [x.lane].concat(x.with || []).filter((k, i, a) => k && a.indexOf(k) === i);
+const namesOf = (x) => whoOf(x).map((k) => (PEOPLE[k] || { name: k }).name).join(' + ');
+const inList = (arr, v) => !arr || !arr.length || arr.includes(v);
 const PROJ_OPTS = () => Object.keys(P).map((k) => [k, P[k].name]);
 function closeModal() {
   const m = document.getElementById('modal'); if (m) m.remove();
@@ -345,12 +351,14 @@ function openForm(title, fields, onSave, onDelete, note) {
   h += '<div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0;font-size:16px">' + esc(title) + '</h2><button type="button" onclick="closeModal()" style="border:0;background:none;font-size:20px;cursor:pointer;line-height:1">×</button></div>';
   if (note) h += '<div style="font-size:11.5px;color:#5F6368">' + esc(note) + '</div>';
   fields.forEach(([k, label, type, val, opts]) => {
-    h += '<label style="display:flex;flex-direction:' + (type === 'check' ? 'row-reverse;justify-content:flex-end;align-items:center' : 'column') + ';gap:4px"><span style="font-size:11.5px;font-weight:600;color:#3F444A">' + esc(label) + '</span>';
+    const tag = type === 'multi' ? 'div' : 'label';
+    h += '<' + tag + ' style="display:flex;flex-direction:' + (type === 'check' ? 'row-reverse;justify-content:flex-end;align-items:center' : 'column') + ';gap:4px"><span style="font-size:11.5px;font-weight:600;color:#3F444A">' + esc(label) + '</span>';
     if (type === 'area') h += '<textarea name="' + k + '" rows="' + (opts || 3) + '" style="' + inp + ';resize:vertical">' + esc(val) + '</textarea>';
     else if (type === 'sel') h += '<select name="' + k + '" style="' + inp + '">' + opts.map(([v, l]) => '<option value="' + esc(v) + '"' + (String(v) === String(val) ? ' selected' : '') + '>' + esc(l) + '</option>').join('') + '</select>';
     else if (type === 'check') h += '<input type="checkbox" name="' + k + '"' + (val ? ' checked' : '') + '>';
+    else if (type === 'multi') h += '<span style="display:flex;flex-wrap:wrap;gap:6px 14px">' + opts.map(([v, l]) => '<label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" name="' + k + '" value="' + esc(v) + '"' + ((val || []).includes(v) ? ' checked' : '') + '>' + esc(l) + '</label>').join('') + '</span>';
     else h += '<input name="' + k + '" type="' + (type === 'num' ? 'number' : type === 'date' ? 'date' : 'text') + '"' + (type === 'num' ? ' min="1" step="1"' : '') + (type === 'text' && typeof opts === 'number' ? ' maxlength="' + opts + '"' : '') + ' value="' + esc(val == null ? '' : val) + '" style="' + inp + '">';
-    h += '</label>';
+    h += '</' + tag + '>';
   });
   h += '<div style="display:flex;gap:8px;justify-content:space-between;margin-top:6px"><span>' + (onDelete ? '<button type="button" id="mdel" style="border:1px solid #E5B4B4;background:#FFFFFF;color:#9B1C1C;border-radius:6px;padding:7px 12px;cursor:pointer;font:inherit">Delete</button>' : '') + '</span>';
   h += '<span style="display:flex;gap:8px"><button type="button" onclick="closeModal()" style="border:1px solid #C9CBC4;background:#FFFFFF;border-radius:6px;padding:7px 12px;cursor:pointer;font:inherit">Cancel</button><button type="submit" style="border:0;background:#1B1D1F;color:#FFFFFF;border-radius:6px;padding:7px 16px;cursor:pointer;font:inherit;font-weight:600">Save</button></span></div>';
@@ -359,7 +367,7 @@ function openForm(title, fields, onSave, onDelete, note) {
   const f = document.getElementById('mform');
   f.onsubmit = async (e) => {
     e.preventDefault();
-    const v = {}; fields.forEach(([k, , type]) => { const el = f.elements[k]; v[k] = type === 'check' ? el.checked : type === 'num' ? Number(el.value) : el.value.trim(); });
+    const v = {}; fields.forEach(([k, , type]) => { const el = f.elements[k]; v[k] = type === 'multi' ? [...f.querySelectorAll('input[name="' + k + '"]:checked')].map((z) => z.value) : type === 'check' ? el.checked : type === 'num' ? Number(el.value) : el.value.trim(); });
     const ops = onSave(v); if (!ops) return;
     const m = document.getElementById('modal'); if (m) m.remove();
     await syncPost(ops); if (SYNC.pendingDoc) SYNC.pendingDoc = null;
@@ -369,12 +377,12 @@ function openForm(title, fields, onSave, onDelete, note) {
 }
 const clean = (o) => { Object.keys(o).forEach((k) => (o[k] === '' || o[k] === false || o[k] == null) && delete o[k]); return o; };
 
-function editBlock(x) {
-  const isNew = !x, cur = x || { lane: (Object.keys(PEOPLE).find((k) => PEOPLE[k].name === SYNC.who) || 'yoni'), date: DAYS[Math.max(0, TODAY)] ? DAYS[Math.max(0, TODAY)].iso : START, h: 0, len: 1, p: state.sel || 'team', t: '' };
+function editBlock(x, pre) {
+  const isNew = !x, cur = x || Object.assign({ lane: (Object.keys(PEOPLE).find((k) => PEOPLE[k].name === SYNC.who) || 'yoni'), date: DAYS[Math.max(0, TODAY)] ? DAYS[Math.max(0, TODAY)].iso : START, h: 0, len: 1, p: state.sel || 'team', t: '' }, pre || {});
   openForm(isNew ? 'Add a task' : 'Edit task', [
     ['title', 'Title — shown on the calendar (max ' + TITLE_MAX + ' characters)', 'text', ttl(cur), TITLE_MAX],
     ['t', 'Details — shown when you hover (optional)', 'area', cur.t && cur.t !== ttl(cur) ? cur.t : '', 3],
-    ['lane', 'Who', 'sel', cur.lane, PERSON_OPTS()],
+    ['who', 'Who (tick everyone involved)', 'multi', whoOf(cur), PERSON_OPTS()],
     ['p', 'Project', 'sel', cur.p, PROJ_OPTS()],
     ['date', 'Day (Sun–Thu)', 'date', cur.date],
     ['h', 'Starts', 'sel', cur.h, [[0, 'Morning'], [1, 'Afternoon']]],
@@ -384,17 +392,20 @@ function editBlock(x) {
     ['prop', 'Proposed — not confirmed yet (dashed)', 'check', !!cur.prop]
   ], (v) => {
     if (!v.title) { alert('Give the task a short title.'); return null; }
+    if (!v.who || !v.who.length) { alert('Tick at least one person.'); return null; }
+    v.lane = v.who[0]; v.with = v.who.slice(1); delete v.who;
     if (!v.t) v.t = v.title;
     if (IDX[v.date] == null) { alert('Pick a working day (Sun–Thu) between ' + START + ' and ' + END + '.'); return null; }
     const item = clean(Object.assign({}, isNew ? {} : x, v, { h: Number(v.h), len: Math.max(1, v.len || 1) }));
+    if (!item.with || !item.with.length) delete item.with;
     delete item.id; delete item.by; delete item.at;
     const id = isNew ? newId('b') : x.id;
-    const what = PEOPLE[item.lane].name + ' · ' + DAYS[IDX[item.date]].day + ' ' + DAYS[IDX[item.date]].date + ' · ' + item.title;
+    const what = namesOf(item) + ' · ' + DAYS[IDX[item.date]].day + ' ' + DAYS[IDX[item.date]].date + ' · ' + item.title;
     let s = what;
-    if (!isNew) { const ch = []; if (x.date !== item.date || x.h !== item.h) ch.push('moved from ' + x.date + (x.h ? ' PM' : ' AM')); if (x.lane !== item.lane) ch.push('was ' + PEOPLE[x.lane].name); if ((x.st || '') !== (item.st || '')) ch.push(item.st ? 'marked ' + item.st : 'reopened'); if (ch.length) s += ' (' + ch.join('; ') + ')'; }
+    if (!isNew) { const ch = []; if (x.date !== item.date || x.h !== item.h) ch.push('moved from ' + x.date + (x.h ? ' PM' : ' AM')); if (namesOf(x) !== namesOf(item)) ch.push('was ' + namesOf(x)); if ((x.st || '') !== (item.st || '')) ch.push(item.st ? 'marked ' + item.st : 'reopened'); if (ch.length) s += ' (' + ch.join('; ') + ')'; }
     if (item.note) s += ' — ' + item.note;
     return [{ op: 'put', coll: 'B', id, item, s }];
-  }, isNew ? null : () => [{ op: 'del', coll: 'B', id: x.id, s: PEOPLE[x.lane].name + ' · ' + x.date + ' · ' + ttl(x) }]);
+  }, isNew ? null : () => [{ op: 'del', coll: 'B', id: x.id, s: namesOf(x) + ' · ' + x.date + ' · ' + ttl(x) }]);
 }
 function editQ(row) {
   const isNew = !row, x = row ? row[6] : { p: state.sel || 'team', name: '', need: '', now: '' };
@@ -447,7 +458,7 @@ function editCard(k) {
   });
 }
 function pickWho() {
-  openForm('Who are you?', [['who', 'Your name (shown on every change you make)', 'sel', SYNC.who || '', [['', '— pick —']].concat(['Yoni', 'Nadav', 'Dorin', 'Or', 'Shimrit', 'Technician'].map((n) => [n, n]))]],
+  openForm('Who are you?', [['who', 'Your name (shown on every change you make)', 'sel', SYNC.who || '', [['', '— pick —']].concat(['Yoni', 'Nadav', 'Dorin', 'Or', 'Shimrit'].map((n) => [n, n]))]],
     (v) => { if (!v.who) { alert('Pick your name.'); return null; } SYNC.who = v.who; try { localStorage.setItem('planner_who', v.who); } catch (e) {} closeModal(); render(); pingVisit(); return null; }, null,
     'Saved on this device only. You can change it later from the line under the title.');
 }
@@ -503,14 +514,14 @@ function logPanel() {
 
 function render() {
   H.length = 0;
-  const sel = state.sel || null, tech = !!state.tech, who = state.who || null;
-  const platOn = !!state.plat, routineOn = !!state.routine, loadOn = !!state.load, view = state.view || 'ov', tlv = view === 'tl', cal = view === 'cal', ves = state.ves || null;
+  const sel = state.sel || null, tech = false, who = (state.who && state.who.length) ? state.who : null;
+  const platOn = !!state.plat, routineOn = !!state.routine, loadOn = !!state.load, view = state.view || 'ov', tlv = view === 'tl', cal = view === 'cal', ves = (state.ves && state.ves.length) ? state.ves : null;
 
-  let blocks = B.filter((x) => (x.lane === 'tech' ? tech : !(tech && x.tt)));
-  if (who) blocks = blocks.filter((x) => x.lane === who);
-  if (ves) blocks = blocks.filter((x) => x.run && vesOf(x.run) === ves);
+  let blocks = B.slice();
+  if (who) blocks = blocks.filter((x) => whoOf(x).some((k) => who.includes(k)));
+  if (ves) blocks = blocks.filter((x) => x.run && ves.includes(vesOf(x.run)));
   const vbars = VR.map((r) => ({ plat: r.v === 'TBC' ? (r.fam === 'any' ? 'Vessel TBC' : r.fam + ' (vessel TBC)') : r.v, v: r.v, date: r.s, h: 0, len: (IDX[r.e] != null && IDX[r.s] != null) ? (IDX[r.e] - IDX[r.s]) * 2 + 2 : 2, p: r.p, t: r.t, prop: r.prop }));
-  const bars = ves ? vbars.filter((x) => x.v === ves) : PB.concat(vbars);
+  const bars = ves ? vbars.filter((x) => ves.includes(x.v)) : PB.concat(vbars);
 
   const seg = (on1, first, w) => 'border:0;' + (first ? '' : 'border-left:1px solid #E1E2DC;') + 'padding:0 12px;min-height:36px;min-width:' + (w || 96) + 'px;text-align:center;cursor:pointer;font-size:13px;font-weight:600;' + (on1 ? 'background:#1B1D1F;color:#FFFFFF;' : 'background:#FFFFFF;color:#1B1D1F;');
   const chip = (on1, c) => 'min-height:36px;padding:0 14px;border-radius:999px;cursor:pointer;font-size:12.5px;display:inline-flex;align-items:center;gap:7px;border:1px solid ' + (on1 ? (c || '#1B1D1F') : '#C9CBC4') + ';background:' + (on1 ? (c || '#1B1D1F') : '#FFFFFF') + ';color:' + (on1 ? '#FFFFFF' : '#1B1D1F') + ';font-weight:500;';
@@ -527,9 +538,6 @@ function render() {
   if (cal) {
   h += '<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px">';
   h += '<button onclick="' + on(() => { const el = document.getElementById('wk' + Math.max(0, Math.floor(TODAY / 5))); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }) + '" style="' + chip(false) + '">Today</button>';
-  h += '<div style="display:flex;border:1px solid #C9CBC4;border-radius:8px;overflow:hidden;background:#FFFFFF">';
-  h += '<button onclick="' + on(() => setState({ tech: false })) + '" style="' + seg(!tech, true, 124) + '">Current team</button>';
-  h += '<button onclick="' + on(() => setState({ tech: true })) + '" style="' + seg(tech, false, 124) + '">+ Technician</button></div>';
   h += '<button onclick="' + on(() => setState({ plat: !platOn })) + '" aria-pressed="' + platOn + '" style="' + chip(platOn) + '">Equipment strip</button>';
   h += '<button onclick="' + on(() => setState({ past: !state.past })) + '" aria-pressed="' + !!state.past + '" style="' + chip(!!state.past) + '">Past weeks</button>';
   h += '<button onclick="' + on(() => setState({ routine: !routineOn })) + '" aria-pressed="' + routineOn + '" style="' + chip(routineOn) + '">Routine</button>';
@@ -543,15 +551,15 @@ function render() {
   h += '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px">';
   h += '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#5F6368;margin-right:4px">Show</span>';
   h += '<button onclick="' + on(() => setState({ who: null })) + '" aria-pressed="' + !who + '" style="' + chip(!who) + '">Everyone</button>';
-  Object.keys(PEOPLE).filter((k) => k !== 'tech' || tech).forEach((k) => {
-    const pp = PEOPLE[k], onp = who === k;
-    h += '<button onclick="' + on(() => setState({ who: onp ? null : k })) + '" aria-pressed="' + onp + '" style="' + chip(onp, pp.c) + '"><span style="width:18px;height:18px;border-radius:50%;background:' + pp.c + ';color:#FFFFFF;font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;border:1.5px solid #FFFFFF">' + pp.name[0] + '</span>' + esc(pp.name) + '</button>';
+  LANES().forEach((k) => {
+    const pp = PEOPLE[k], onp = !!who && who.includes(k);
+    h += '<button title="Click to add or remove — several can be on at once" onclick="' + on(() => { const cur = (state.who || []).filter((z) => z !== k); setState({ who: onp ? cur : cur.concat([k]) }); }) + '" aria-pressed="' + onp + '" style="' + chip(onp, pp.c) + '"><span style="width:18px;height:18px;border-radius:50%;background:' + pp.c + ';color:#FFFFFF;font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;border:1.5px solid #FFFFFF">' + pp.name[0] + '</span>' + esc(pp.name) + '</button>';
   });
   h += '<span style="margin-left:auto;display:inline-flex;align-items:center;gap:8px;font-size:12px;color:#4A4F55"><span style="display:inline-block;width:34px;height:18px;border-radius:5px;background:#5F6368;outline:2px dashed rgba(255,255,255,.85);outline-offset:-4px"></span>dashed = proposed, not yet confirmed</span>';
   h += '</div>';
   h += '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:-8px 0 16px">';
   h += '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#5F6368;margin-right:4px">Vessel</span>';
-  VESSELS.concat(['TBC']).forEach((v) => { const onv = ves === v, n = VR.filter((r) => r.v === v).length; h += '<button onclick="' + on(() => setState({ ves: onv ? null : v })) + '" aria-pressed="' + onv + '" style="' + chip(onv) + (n ? '' : 'opacity:.55;') + '">' + (v === 'TBC' ? 'Not assigned' : v) + '</button>'; });
+  VESSELS.concat(['TBC']).forEach((v) => { const onv = !!ves && ves.includes(v), n = VR.filter((r) => r.v === v).length; h += '<button onclick="' + on(() => { const cur = (state.ves || []).filter((z) => z !== v); setState({ ves: onv ? cur : cur.concat([v]) }); }) + '" aria-pressed="' + onv + '" style="' + chip(onv) + (n ? '' : 'opacity:.55;') + '">' + (v === 'TBC' ? 'Not assigned' : v) + '</button>'; });
   h += '</div>';
   } else h += '<div style="margin-bottom:16px;font-size:12.5px;color:#4A4F55">' + ({ ov: 'Goals and the high-level plan for each project. Pick one on the left to focus.', tl: 'Each project in one line. Click a project for its phases and milestones; dashed = proposed.', pl: 'What each bioreactor vessel is booked for, and how busy it is.' })[view] + '</div>';
 
@@ -582,9 +590,8 @@ function render() {
       if (z > a) items.push({ kind: 'b', x, a: a - lo, len: z - a });
     });
     items.sort((p, q) => p.a - q.a || q.len - p.len);
-    if (routineOn) for (let d = 0; d < 5; d++) ['nadav', 'dorin'].filter((k) => !who || who === k).forEach((k) => items.push({ kind: 'r', k, a: d * 2, len: 2 }));
-    const nRows = Math.max(1, pack(items));
-    if (!items.length && !platOn) { h += '<div id="wk' + w + '" style="scroll-margin-top:12px;padding:6px 12px;border:1px dashed #D5D6D0;border-radius:10px;font-size:12px;color:#6B7075">Week of ' + DAYS[w * 5].date + ' — nothing scheduled</div>'; continue; }
+    if (routineOn) for (let d = 0; d < 5; d++) ['nadav', 'dorin'].filter((k) => !who || who.includes(k)).forEach((k) => items.push({ kind: 'r', k, a: d * 2, len: 2 }));
+    const nRows = Math.max(3, pack(items) + 1); // always at least 3 rows + one free row, like an empty calendar
 
     h += '<section id="wk' + w + '" style="scroll-margin-top:12px;background:#FFFFFF;border:1px solid #E1E2DC;border-radius:12px;overflow-x:auto"><div style="min-width:1000px;padding:10px 12px 12px">';
     h += '<div style="display:grid;grid-template-columns:repeat(10,minmax(0,1fr));grid-template-rows:auto auto">';
@@ -600,6 +607,10 @@ function render() {
       const di = w * 5 + i;
       h += '<div style="grid-column:' + (i * 2 + 1) + ' / span 2;grid-row:1 / span ' + nRows + ';border-left:1px solid #E4E4DF;background:' + (di === TODAY ? '#FFF7E3' : (di < TODAY ? '#FAFAF8' : 'transparent')) + '"></div>';
     }
+    for (let r = 0; r < nRows; r++) for (let i = 0; i < 10; i++) {
+      const di = w * 5 + (i >> 1), free = canEdit() && di >= TODAY;
+      h += '<div class="cell"' + (free ? ' title="Click to add a task here" onclick="' + on(() => editBlock(null, { date: DAYS[di].iso, h: i % 2 })) + '"' : '') + ' style="grid-column:' + (i + 1) + ';grid-row:' + (r + 1) + ';border-top:1px solid #EEEEEA;border-left:1px ' + (i % 2 ? 'dotted #E9E9E4' : 'solid #E4E4DF') + ';' + (i === 9 ? 'border-right:1px solid #E4E4DF;' : '') + (r === nRows - 1 ? 'border-bottom:1px solid #EEEEEA;' : '') + (free ? 'cursor:pointer;' : '') + '"></div>';
+    }
     items.forEach((it) => {
       const pos = 'grid-column:' + (it.a + 1) + ' / span ' + it.len + ';grid-row:' + (it.row + 1) + ';';
       if (it.kind === 'r') {
@@ -609,7 +620,7 @@ function render() {
       }
       const x = it.x, pp = PEOPLE[x.lane] || PEOPLE.yoni, c = (P[x.p] || { c: '#999' }).c, dim = sel && x.p !== sel, hit = sel && x.p === sel;
       const done = x.st === 'done', blk = x.st === 'blocked';
-      h += '<div class="blk' + (x.prop ? ' prop' : '') + '"' + (canEdit() ? ' onclick="' + on(() => editBlock(x)) + '"' : '') + ' title="' + esc(ttl(x) + '\n' + pp.name + ' · ' + (P[x.p] || { name: '?' }).name + ' · ' + fmt(x.len * .5) + ' d' + (x.prop ? ' · proposed' : '') + (x.st ? ' · ' + x.st : '') + (x.t && x.t !== ttl(x) ? '\n\n' + x.t : '') + (x.note ? '\n\nNote: ' + x.note : '') + (x.by ? '\n\nlast change: ' + x.by : '') + (canEdit() ? '\n(click to edit)' : '')) + '" style="' + pos + 'background:' + c + ';opacity:' + (dim ? .15 : done ? .5 : 1) + ';' + (canEdit() ? 'cursor:pointer;' : '') + (hit ? 'box-shadow:0 0 0 2px #FFFFFF,0 0 0 4px ' + c + ';' : '') + (blk ? 'box-shadow:0 0 0 3px #E53E3E;' : '') + '"><span class="dot" style="background:' + pp.c + '">' + (done ? '✓' : blk ? '!' : pp.name[0]) + '</span><span class="tx"' + (done ? ' style="text-decoration:line-through"' : '') + '>' + esc(ttl(x)) + (x.note ? ' <span style="opacity:.8">✎</span>' : '') + '</span></div>';
+      h += '<div class="blk' + (x.prop ? ' prop' : '') + '"' + (canEdit() ? ' onclick="' + on(() => editBlock(x)) + '"' : '') + ' title="' + esc(ttl(x) + '\n' + namesOf(x) + ' · ' + (P[x.p] || { name: '?' }).name + ' · ' + fmt(x.len * .5) + ' d' + (x.prop ? ' · proposed' : '') + (x.st ? ' · ' + x.st : '') + (x.t && x.t !== ttl(x) ? '\n\n' + x.t : '') + (x.note ? '\n\nNote: ' + x.note : '') + (x.by ? '\n\nlast change: ' + x.by : '') + (canEdit() ? '\n(click to edit)' : '')) + '" style="' + pos + 'background:' + c + ';opacity:' + (dim ? .15 : done ? .5 : 1) + ';' + (canEdit() ? 'cursor:pointer;' : '') + (hit ? 'box-shadow:0 0 0 2px #FFFFFF,0 0 0 4px ' + c + ';' : '') + (blk ? 'box-shadow:0 0 0 3px #E53E3E;' : '') + '"><span style="display:flex;flex:none">' + whoOf(x).map((k, i) => { const q = PEOPLE[k] || pp; return '<span class="dot" style="background:' + q.c + (i ? ';margin-left:-7px' : '') + '">' + (i === 0 && done ? '✓' : i === 0 && blk ? '!' : q.name[0]) + '</span>'; }).join('') + '</span><span class="tx"' + (done ? ' style="text-decoration:line-through"' : '') + '>' + esc(ttl(x)) + (x.note ? ' <span style="opacity:.8">✎</span>' : '') + '</span></div>';
     });
     h += '</div>';
 
@@ -628,10 +639,10 @@ function render() {
 
     if (loadOn) {
       h += '<div style="margin-top:10px;padding-top:8px;border-top:1px solid #E1E2DC;display:flex;flex-wrap:wrap;gap:8px">';
-      Object.keys(PEOPLE).filter((k) => (k !== 'tech' || tech) && (!who || who === k)).forEach((k) => {
+      LANES().filter((k) => !who || who.includes(k)).forEach((k) => {
         const pp = PEOPLE[k];
         let d = pp.routine;
-        B.filter((x) => (x.lane === 'tech' ? tech : !(tech && x.tt)) && x.lane === k).forEach((x) => { const s = slot(x); for (let i = s; i < s + x.len; i++) if (i >= lo && i < hi) d += .5; });
+        B.filter((x) => x.lane !== 'tech' && whoOf(x).includes(k)).forEach((x) => { const s = slot(x); for (let i = s; i < s + x.len; i++) if (i >= lo && i < hi) d += .5; });
         const over = pp.cap && d > pp.cap;
         h += '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:12px;padding:4px 10px;border-radius:999px;' + (over ? 'background:#FDE3E3;color:#9B1C1C;font-weight:600;' : 'background:#F0F1EC;color:#2D3135;') + '">' + esc(pp.name + ' ' + fmt(d) + (pp.cap ? ' / ' + pp.cap : '') + ' d') + '</span>';
       });
