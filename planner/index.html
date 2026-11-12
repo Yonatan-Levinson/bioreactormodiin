@@ -448,7 +448,7 @@ function editCard(k) {
 }
 function pickWho() {
   openForm('Who are you?', [['who', 'Your name (shown on every change you make)', 'sel', SYNC.who || '', [['', '— pick —']].concat(['Yoni', 'Nadav', 'Dorin', 'Or', 'Shimrit', 'Technician'].map((n) => [n, n]))]],
-    (v) => { if (!v.who) { alert('Pick your name.'); return null; } SYNC.who = v.who; try { localStorage.setItem('planner_who', v.who); } catch (e) {} closeModal(); render(); return null; }, null,
+    (v) => { if (!v.who) { alert('Pick your name.'); return null; } SYNC.who = v.who; try { localStorage.setItem('planner_who', v.who); } catch (e) {} closeModal(); render(); pingVisit(); return null; }, null,
     'Saved on this device only. You can change it later from the line under the title.');
 }
 function adminLogin() {
@@ -659,7 +659,16 @@ function render() {
   document.getElementById('app').innerHTML = h;
 }
 render();
-if (effKey()) { syncGet(true).then(() => { if (SYNC.role && !SYNC.who) pickWho(); }); }
+// Usage tracking: one quiet "opened" note per person per day (for Yoni's morning usage report)
+function pingVisit() {
+  if (!effKey() || !SYNC.who) return;
+  const d = new Date().toDateString();
+  if (SYNC.visitDay === d) return;
+  SYNC.visitDay = d;
+  fetch(SYNC_URL + '?action=visit&key=' + encodeURIComponent(effKey()) + '&who=' + encodeURIComponent(SYNC.who) + '&dev=' + (/Mobi|Android|iPhone/i.test(navigator.userAgent) ? 'phone' : 'desktop') + '&t=' + Date.now()).catch(() => {});
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') pingVisit(); });
+if (effKey()) { syncGet(true).then(() => { if (SYNC.role && !SYNC.who) pickWho(); else pingVisit(); }); }
 </script>
 </body>
 </html>
