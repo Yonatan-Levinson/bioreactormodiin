@@ -16,6 +16,13 @@ button{font-family:inherit}
 .blk.prop{outline:2px dashed rgba(255,255,255,.85);outline-offset:-4px}
 .cell:hover{background:rgba(43,108,176,.06)}
 .dot{width:20px;height:20px;border-radius:50%;border:1.5px solid #FFFFFF;box-sizing:border-box;color:#FFFFFF;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none;margin-top:1px}
+.blk .mk{position:absolute;top:4px;right:4px;display:flex;opacity:.95}
+.blk.hasmk{padding-right:17px}
+.rbtn{width:40px;height:40px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;position:relative;padding:0;box-sizing:border-box}
+.rbtn .pn{position:absolute;right:-3px;bottom:-3px;font-family:'IBM Plex Mono',monospace;font-size:8.5px;font-weight:600;padding:0 3px;border-radius:3px;line-height:13px;border:1px solid #FFFFFF}
+.pfl:hover{background:#F7F7F4}
+.projsel{display:none}
+@media (max-width:900px){.rail{display:none!important}.projsel{display:block}}
 </style>
 </head>
 <body>
@@ -75,13 +82,30 @@ const todayIso = (() => { const d = new Date(); return d.getFullYear() + '-' + S
 const TODAY = IDX[todayIso] ?? -1;
 
 let state = {};
-try { const v0 = localStorage.getItem('novella_planner_view'); if (v0) state.view = v0; } catch (e) {}
+try { const v0 = localStorage.getItem('novella_planner_view'); if (v0) state.view = v0 === 'tl' ? 'ov' : v0; state.railWide = localStorage.getItem('novella_planner_rail') === '1'; } catch (e) {}
 const H = [];
 function setState(p) { state = Object.assign({}, state, p); if (p.view) { try { localStorage.setItem('novella_planner_view', p.view); } catch (e) {} } render(); }
 function on(fn) { H.push(fn); return 'H[' + (H.length - 1) + ']()'; }
 function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 const priBadge = (k, big) => { const q = PRI[P[k].pri || 3]; return '<span title="Priority: ' + q[1] + '" style="flex:none;font-family:\'IBM Plex Mono\',monospace;font-size:' + (big ? 11 : 10) + 'px;font-weight:600;padding:1px 6px;border-radius:4px;background:' + q[3] + ';color:' + q[2] + ';white-space:nowrap">' + q[0] + '</span>'; };
 const byPri = (a, b2) => (P[a].pri || 3) - (P[b2].pri || 3);
+
+// ---- Project identity = colour × marker (12 Nov, like series in a graph) ----
+// P.c is one of PALETTE, P.sym one of SYMS. Every (c, sym) pair is unique. A 21st project needs a 6th colour.
+const PALETTE = [['#1D4ED8', 'Blue'], ['#C2410C', 'Orange'], ['#15803D', 'Green'], ['#7E22CE', 'Purple'], ['#475569', 'Slate']];
+const SYMS = [['circle', '●'], ['square', '■'], ['triangle', '▲'], ['diamond', '◆']];
+const pc = (k) => (P[k] || { c: '#999999' }).c;
+// marker shape as inline SVG (glyph sizes vary too much between fonts)
+function mkSvg(sym, sz, fill, stroke) {
+  if (!sym) return '';
+  const st = stroke ? ' stroke="' + stroke + '" stroke-width="1.6"' : '';
+  const sh = sym === 'square' ? '<rect x="2" y="2" width="8" height="8"' + st + '/>' : sym === 'triangle' ? '<path d="M6 1.2 11 10.4H1z"' + st + '/>' : sym === 'diamond' ? '<path d="M6 .8 11.2 6 6 11.2.8 6z"' + st + '/>' : '<circle cx="6" cy="6" r="4.4"' + st + '/>';
+  return '<svg width="' + sz + '" height="' + sz + '" viewBox="0 0 12 12" fill="' + fill + '" aria-hidden="true" style="flex:none;display:block">' + sh + '</svg>';
+}
+const mk = (k, sz, fill) => mkSvg((P[k] || {}).sym, sz || 9, fill || '#FFFFFF');
+// coloured swatch with the white marker inside — the project's "legend key"
+const sw = (k, sz) => { sz = sz || 14; return '<span style="width:' + sz + 'px;height:' + sz + 'px;border-radius:3px;background:' + pc(k) + ';flex:none;display:inline-flex;align-items:center;justify-content:center">' + mk(k, Math.round(sz * .64)) + '</span>'; };
+const symName = (s) => (SYMS.find((x) => x[0] === s) || ['', ''])[1];
 const TITLE_MAX = 22;
 const ttl = (x) => x.title || (x.t && x.t.length > TITLE_MAX ? x.t.slice(0, TITLE_MAX - 1).trim() + '…' : (x.t || ''));
 const fmt = (x) => (Math.round(x * 2) / 2).toString();
@@ -121,36 +145,87 @@ function ganttAxis(LBL) {
   return { h, pct, tp, dayW: 100 / (span / 864e5) };
 }
 
-function renderOverview(sel) {
-  const keys = Object.keys(P).filter((k) => !sel || k === sel);
-  const mono = 'font-family:\'IBM Plex Mono\',monospace;';
-  let h = '';
-  THEMES.forEach(([n, label]) => {
-    const ks = keys.filter((k) => P[k].theme === n).sort(byPri);
-    if (!ks.length) return;
-    h += '<div style="' + mono + 'font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:#5F6368;margin:6px 0 -6px">' + esc(label) + '</div>';
-    h += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px">';
-    ks.forEach((k) => {
-      const o = OV[k] || {}, c = P[k].c;
-      h += '<article style="background:#FFFFFF;border:1px solid #E1E2DC;border-top:4px solid ' + c + ';border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;min-width:0">';
-      h += '<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start"><div style="display:flex;gap:8px;align-items:center;min-width:0">' + priBadge(k, 1) + '<div style="font-weight:700;font-size:14.5px;line-height:1.3">' + esc(P[k].name) + '</div></div>';
-      h += '<span style="' + mono + 'font-size:10.5px;padding:2px 7px;border-radius:4px;background:' + c + '14;color:' + c + '">' + esc(o.status || '') + '</span></div>';
-      h += '<div style="font-size:11.5px;color:#4A4F55;display:flex;flex-wrap:wrap;gap:4px 12px"><span><b style="color:#1B1D1F">Owner</b> ' + esc(o.owner || '—') + '</span><span><b style="color:#1B1D1F">With</b> ' + esc(o.who || '—') + '</span><span><b style="color:#1B1D1F">Horizon</b> ' + esc(o.horizon || '—') + '</span></div>';
-      if (o.goals) h += '<div><div style="' + mono + 'font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#6B7075;margin-bottom:3px">Objectives</div><ul style="margin:0;padding-left:18px;line-height:1.45;font-size:12.5px">' + o.goals.map((g) => '<li>' + esc(g) + '</li>').join('') + '</ul></div>';
-      if (o.plan) {
-        h += '<div><div style="' + mono + 'font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#6B7075;margin-bottom:3px">Plan</div>';
-        o.plan.forEach(([s, d]) => { h += '<div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:3px 0;border-top:1px solid #F0F0EC;font-size:12.5px;line-height:1.4"><span>' + esc(s) + '</span><span style="' + mono + 'font-size:11px;color:#5F6368;text-align:right;max-width:120px">' + esc(d) + '</span></div>'; });
-        h += '</div>';
-      }
-      h += '<div style="margin-top:auto;display:flex;justify-content:space-between;gap:10px;align-items:center;padding-top:6px;border-top:1px solid #E1E2DC"><span style="font-size:12px"><b>Next:</b> ' + esc(o.next || '—') + '</span>';
-      h += '<span style="flex:none;display:flex;gap:6px">' + (isAdmin() && SYNC.who ? '<button onclick="' + on(() => editCard(k)) + '" style="border:1px solid #C9CBC4;background:#FFFFFF;border-radius:6px;padding:4px 9px;cursor:pointer;font-size:11.5px">Edit</button>' : '') + '<button onclick="' + on(() => setState({ sel: k, view: 'tl' })) + '" style="border:1px solid #C9CBC4;background:#FFFFFF;border-radius:6px;padding:4px 9px;cursor:pointer;font-size:11.5px">Timeline →</button></span></div>';
-      h += '</article>';
-    });
+// ---- Projects view: portfolio list (All) or card + Gantt (one project). Timeline merged in here 12 Nov. ----
+const MONO = 'font-family:\'IBM Plex Mono\',monospace;';
+const tlRows = (k) => (TL[k] || []).slice().sort((a, b2) => a.s < b2.s ? -1 : a.s > b2.s ? 1 : 0);
+const todayLine = (ax) => ax.tp !== null ? '<div style="position:absolute;left:' + ax.tp + '%;top:0;bottom:0;border-left:2px solid #E0A526;z-index:0"></div>' : '';
+function msHtml(r, c, ax, sz) {
+  return '<div title="' + esc(r.name + ' — ' + r.s + (r.prop ? ' (proposed)' : '')) + '" style="position:absolute;left:calc(' + (ax.pct(r.s) + ax.dayW / 2) + '% - ' + (sz / 2 + 1) + 'px);top:50%;width:' + sz + 'px;height:' + sz + 'px;margin-top:-' + (sz / 2) + 'px;transform:rotate(45deg);background:' + (r.prop ? '#FFFFFF' : c) + ';border:2px ' + (r.prop && sz > 11 ? 'dashed' : 'solid') + ' ' + c + ';box-sizing:border-box;z-index:2"></div>';
+}
+function ganttLegend() {
+  return '<div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:12px;font-size:11.5px;color:#4A4F55"><span><span style="display:inline-block;width:2px;height:12px;background:#E0A526;vertical-align:middle;margin-right:6px"></span>today</span><span><span style="display:inline-block;width:22px;height:9px;border-radius:3px;background:#5F6368;opacity:.6;vertical-align:middle;margin-right:6px"></span>phase (pale = proposed)</span><span><span style="display:inline-block;width:10px;height:10px;transform:rotate(45deg);border:2px solid #1B1D1F;margin-right:8px;vertical-align:middle"></span>milestone (hollow = proposed)</span></div>';
+}
+function cardHtml(k) {
+  const o = OV[k] || {}, c = pc(k);
+  let h = '<article style="background:#FFFFFF;border:1px solid #E1E2DC;border-top:4px solid ' + c + ';border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;min-width:0">';
+  h += '<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start"><div style="display:flex;gap:8px;align-items:center;min-width:0">' + sw(k, 16) + priBadge(k, 1) + '<div style="font-weight:700;font-size:14.5px;line-height:1.3">' + esc(P[k].name) + '</div></div>';
+  h += '<span style="' + MONO + 'font-size:10.5px;padding:2px 7px;border-radius:4px;background:' + c + '14;color:' + c + '">' + esc(o.status || '') + '</span></div>';
+  h += '<div style="font-size:11.5px;color:#4A4F55;display:flex;flex-wrap:wrap;gap:4px 12px"><span><b style="color:#1B1D1F">Owner</b> ' + esc(o.owner || '—') + '</span><span><b style="color:#1B1D1F">With</b> ' + esc(o.who || '—') + '</span><span><b style="color:#1B1D1F">Horizon</b> ' + esc(o.horizon || '—') + '</span></div>';
+  if (o.goals) h += '<div><div style="' + MONO + 'font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#6B7075;margin-bottom:3px">Objectives</div><ul style="margin:0;padding-left:18px;line-height:1.45;font-size:12.5px">' + o.goals.map((g) => '<li>' + esc(g) + '</li>').join('') + '</ul></div>';
+  if (o.plan) {
+    h += '<div><div style="' + MONO + 'font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#6B7075;margin-bottom:3px">Plan</div>';
+    o.plan.forEach(([s, d]) => { h += '<div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:3px 0;border-top:1px solid #F0F0EC;font-size:12.5px;line-height:1.4"><span>' + esc(s) + '</span><span style="' + MONO + 'font-size:11px;color:#5F6368;text-align:right;max-width:120px">' + esc(d) + '</span></div>'; });
     h += '</div>';
-  });
-  h += '<div style="font-size:11.5px;color:#6B7075">Durations are rough estimates (weeks/months). Day-to-day work lives in Calendar.</div>';
+  }
+  h += '<div style="margin-top:auto;display:flex;justify-content:space-between;gap:10px;align-items:center;padding-top:6px;border-top:1px solid #E1E2DC"><span style="font-size:12px"><b>Next:</b> ' + esc(o.next || '—') + '</span>';
+  if (isAdmin() && SYNC.who) h += '<button onclick="' + on(() => editCard(k)) + '" style="flex:none;border:1px solid #C9CBC4;background:#FFFFFF;border-radius:6px;padding:4px 9px;cursor:pointer;font-size:11.5px">Edit</button>';
+  h += '</div></article>';
   return h;
 }
+
+// All projects: one line per project, grouped by theme, every line on the same month axis (for Shimrit)
+function renderPortfolio() {
+  const LBL = 440, ax = ganttAxis(LBL);
+  let h = '<section style="background:#FFFFFF;border:1px solid #E1E2DC;border-radius:12px;overflow-x:auto"><div style="min-width:1150px;padding:10px 12px 14px">' + ax.h;
+  THEMES.forEach(([n, label]) => {
+    const ks = Object.keys(P).filter((k) => P[k].theme === n).sort(byPri);
+    if (!ks.length) return;
+    h += '<div style="' + MONO + 'font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:#5F6368;margin:14px 0 2px">' + esc(label) + '</div>';
+    ks.forEach((k) => {
+      const o = OV[k] || {}, c = pc(k), rows = tlRows(k);
+      h += '<div class="pfl" onclick="' + on(() => setState({ sel: k })) + '" title="Open the project card and plan" style="display:grid;grid-template-columns:' + LBL + 'px 1fr;border-top:1px solid #EEEEEA;cursor:pointer;min-height:48px">';
+      h += '<div style="padding:6px 14px 6px 2px;display:flex;flex-direction:column;gap:3px;min-width:0">';
+      h += '<div style="display:flex;align-items:center;gap:7px;min-width:0">' + sw(k) + priBadge(k) + '<span style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">' + esc(P[k].name) + '</span><span style="flex:none;margin-left:auto;font-size:11.5px;color:#5F6368">' + esc(o.owner || '—') + '</span></div>';
+      h += '<div style="display:flex;align-items:center;gap:7px;min-width:0;font-size:11.5px;color:#4A4F55;padding-left:21px">' + (o.status ? '<span style="flex:none;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' + MONO + 'font-size:10.5px;padding:1px 6px;border-radius:4px;background:' + c + '14;color:' + c + '">' + esc(o.status) + '</span>' : '') + '<span title="' + esc(o.next || '') + '" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0"><b style="color:#1B1D1F">Next:</b> ' + esc(o.next || '—') + '</span></div>';
+      h += '</div><div style="position:relative;min-height:48px">' + todayLine(ax);
+      if (!rows.length) h += '<div style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:11px;color:#9AA0A6">no plan yet</div>';
+      rows.forEach((r) => {
+        if (r.kind === 'ms') h += msHtml(r, c, ax, 10);
+        else { const l = ax.pct(r.s), w = Math.max(ax.pct(r.e, 1) - l, 0.6); h += '<div title="' + esc(r.name + ' — ' + r.s + ' → ' + r.e + (r.prop ? ' (proposed)' : '')) + '" style="position:absolute;left:' + l + '%;width:' + w + '%;top:17px;bottom:17px;border-radius:4px;background:' + c + ';opacity:' + (r.prop ? .35 : .65) + ';z-index:1"></div>'; }
+      });
+      h += '</div></div>';
+    });
+  });
+  h += ganttLegend() + '</div></section>';
+  h += '<div style="font-size:11.5px;color:#6B7075">Click a line for the full card and its phases and milestones. Day-to-day work lives in Calendar.</div>';
+  return h;
+}
+
+// One project: its card on the left, its Gantt (one row per phase / milestone) on the right
+function renderProject(k) {
+  const c = pc(k), rows = tlRows(k), LBL = 210, ax = ganttAxis(LBL);
+  let h = '<div><button onclick="' + on(() => setState({ sel: null })) + '" style="border:0;background:none;padding:0;color:#23699A;cursor:pointer;font-size:12.5px">← All projects</button></div>';
+  h += '<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start">';
+  h += '<div style="flex:0 1 340px;min-width:280px">' + cardHtml(k) + '</div>';
+  h += '<section style="flex:1 1 560px;min-width:0;background:#FFFFFF;border:1px solid #E1E2DC;border-radius:12px;overflow-x:auto"><div style="min-width:760px;padding:10px 12px 14px">';
+  h += '<div style="display:flex;align-items:center;gap:10px;margin:0 0 6px"><h2 style="margin:0;font-size:15px">Phases &amp; milestones</h2>' + (canEdit() ? '<button onclick="' + on(() => editTL(null, k)) + '" style="margin-left:auto;border:1px solid #C9CBC4;background:#FFFFFF;border-radius:6px;padding:3px 9px;cursor:pointer;font-size:11.5px">+ Add milestone / phase</button>' : '') + '</div>';
+  h += ax.h;
+  if (!rows.length) h += '<div style="padding:14px 4px;font-size:12px;color:#6B7075">No plan yet' + (canEdit() ? ' — add the first milestone with the button above.' : '.') + '</div>';
+  rows.forEach((r) => {
+    h += '<div' + (canEdit() ? ' onclick="' + on(() => editTL(r, k)) + '" title="click to edit"' : '') + ' style="display:grid;grid-template-columns:' + LBL + 'px 1fr;align-items:center;min-height:30px;border-top:1px solid #F3F3EF;' + (canEdit() ? 'cursor:pointer;' : '') + '">';
+    h += '<div style="padding:3px 12px 3px 2px;font-size:12px;line-height:1.35"><span' + (r.prop ? ' style="color:#3F444A"' : ' style="font-weight:600"') + '>' + esc(r.name) + '</span>' + (r.note ? '<div style="font-size:11px;color:#9B1C1C;margin-top:1px">' + esc(r.note) + '</div>' : '') + '</div>';
+    h += '<div style="position:relative;height:100%;min-height:30px">' + todayLine(ax);
+    if (r.kind === 'ms') h += msHtml(r, c, ax, 14);
+    else {
+      const l = ax.pct(r.s), w = Math.max(ax.pct(r.e, 1) - l, 0.6);
+      h += '<div title="' + esc(r.name + ' — ' + r.s + ' → ' + r.e + (r.prop ? ' (proposed)' : '')) + '" style="position:absolute;left:' + l + '%;width:' + w + '%;top:7px;bottom:7px;border-radius:5px;background:' + c + ';z-index:1;display:flex;align-items:center;padding-left:4px;overflow:hidden;box-sizing:border-box;' + (r.prop ? 'outline:2px dashed rgba(255,255,255,.85);outline-offset:-4px;' : '') + '">' + mk(k, 8) + '</div>';
+    }
+    h += '</div></div>';
+  });
+  h += ganttLegend() + '</div></section></div>';
+  return h;
+}
+function renderOverview(sel) { return sel && P[sel] ? renderProject(sel) : renderPortfolio(); }
 
 function renderPlatforms(sel) {
   const LBL = 170, ax = ganttAxis(LBL), mono = 'font-family:\'IBM Plex Mono\',monospace;';
@@ -163,9 +238,9 @@ function renderPlatforms(sel) {
     h += '<div style="padding:4px 10px 4px 4px;font-weight:700;font-size:13px' + (tbc ? ';color:#9B1C1C' : '') + '">' + (tbc ? 'Vessel not assigned' : esc(v)) + '</div><div style="position:relative;height:100%;min-height:34px">';
     if (ax.tp !== null) h += '<div style="position:absolute;left:' + ax.tp + '%;top:0;bottom:0;border-left:2px solid #E0A526"></div>';
     runs.forEach((r) => {
-      const c = P[r.p].c, l = ax.pct(r.s), w = Math.max(ax.pct(r.e, 1) - l, 0.6), dim = sel && r.p !== sel;
+      const c = pc(r.p), l = ax.pct(r.s), w = Math.max(ax.pct(r.e, 1) - l, 0.6), dim = sel && r.p !== sel;
       const lab = (r.hold ? 'Held: ' : '') + r.t + (tbc ? ' · needs ' + r.fam : '');
-      h += '<div title="' + esc(lab + ' — ' + r.s + ' → ' + r.e + (r.prop ? ' (proposed)' : '')) + '" style="position:absolute;left:' + l + '%;width:' + w + '%;top:5px;bottom:5px;border-radius:5px;background:' + (r.hold ? 'repeating-linear-gradient(135deg,' + c + '33 0 6px,#FFFFFF 6px 12px);border:2px solid ' + c : c) + ';opacity:' + (dim ? .2 : 1) + ';color:' + (r.hold ? '#1B1D1F' : '#FFFFFF') + ';font-size:10.5px;font-weight:600;padding:0 6px;display:flex;align-items:center;overflow:hidden;white-space:nowrap;' + (r.prop ? 'outline:2px dashed rgba(255,255,255,.85);outline-offset:-4px;' : '') + '">' + esc(lab) + '</div>';
+      h += '<div title="' + esc(lab + ' — ' + r.s + ' → ' + r.e + (r.prop ? ' (proposed)' : '')) + '" style="position:absolute;left:' + l + '%;width:' + w + '%;top:5px;bottom:5px;border-radius:5px;background:' + (r.hold ? 'repeating-linear-gradient(135deg,' + c + '33 0 6px,#FFFFFF 6px 12px);border:2px solid ' + c : c) + ';opacity:' + (dim ? .2 : 1) + ';color:' + (r.hold ? '#1B1D1F' : '#FFFFFF') + ';font-size:10.5px;font-weight:600;padding:0 6px;display:flex;align-items:center;gap:5px;overflow:hidden;white-space:nowrap;' + (r.prop ? 'outline:2px dashed rgba(255,255,255,.85);outline-offset:-4px;' : '') + '">' + mk(r.p, 8, r.hold ? c : '#FFFFFF') + esc(lab) + '</div>';
     });
     h += '</div></div>';
   });
@@ -197,68 +272,6 @@ function renderPlatforms(sel) {
   h += '</table>';
   const nT = VR.filter((r) => r.v === 'TBC').length;
   h += '<p style="margin:10px 0 0;font-size:12px;color:#4A4F55">All vessels, whole horizon: <b>' + Math.round(tConf / tCap * 100) + '%</b> confirmed, +' + Math.round(tProp / tCap * 100) + '% proposed' + (tHeld ? ', ' + Math.round(tHeld / tCap * 100) + '% held (blocked, not running — h in the table)' : '') + '.' + (nT ? ' <span style="color:#9B1C1C">' + nT + ' run' + (nT > 1 ? 's' : '') + ' not yet assigned to a vessel — not counted above.</span>' : '') + '</p></section>';
-  return h;
-}
-
-function renderTimeline(sel) {
-  const t0 = Date.parse(START + 'T00:00:00'), t1 = Date.parse(END + 'T00:00:00') + 864e5, span = t1 - t0;
-  const pct = (iso, endOfDay) => ((Date.parse(iso + 'T00:00:00') + (endOfDay ? 864e5 : 0) - t0) / span * 100);
-  const LBL = 300;
-  let h = '<section style="background:#FFFFFF;border:1px solid #E1E2DC;border-radius:12px;overflow-x:auto"><div style="min-width:1100px;padding:10px 12px 14px">';
-  // month header
-  h += '<div style="display:grid;grid-template-columns:' + LBL + 'px 1fr;align-items:end"><div></div><div style="position:relative;height:26px;border-bottom:1px solid #E1E2DC">';
-  const d = new Date(START + 'T12:00:00'); d.setDate(1);
-  while (d.getTime() < t1) {
-    const iso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-01';
-    const left = Math.max(0, pct(iso));
-    const nx = new Date(d); nx.setMonth(nx.getMonth() + 1);
-    const visDays = (Math.min(nx.getTime(), t1) - Math.max(d.getTime(), t0)) / 864e5;
-    const lbl = visDays < 12 ? '' : MON[d.getMonth()] + (d.getMonth() === 0 || !h.includes('data-firstm') ? ' ' + d.getFullYear() : '');
-    h += '<div data-firstm style="position:absolute;left:' + left + '%;top:0;bottom:0;border-left:1px solid #D5D6D0;padding-left:6px;font-weight:700;font-size:12.5px;white-space:nowrap">' + lbl + '</div>';
-    d.setMonth(d.getMonth() + 1);
-  }
-  h += '</div></div>';
-  const tp = (todayIso >= START && todayIso <= END) ? pct(todayIso) + (100 / (span / 864e5)) / 2 : null;
-  const keys = Object.keys(P).filter((k) => !sel || k === sel);
-  THEMES.forEach(([n, label]) => {
-    const ks = keys.filter((k) => P[k].theme === n).sort(byPri);
-    if (!ks.length) return;
-    if (!sel) h += '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:#5F6368;margin:14px 0 2px">' + esc(label) + '</div>';
-    ks.forEach((k) => {
-      const c = P[k].c, rows = (TL[k] || []).slice().sort((a, b2) => a.s < b2.s ? -1 : a.s > b2.s ? 1 : 0);
-      h += '<div style="display:grid;grid-template-columns:' + LBL + 'px 1fr;border-top:1px solid #EEEEEA;margin-top:4px"><div style="display:flex;align-items:center;gap:8px;padding:8px 0 4px"><span style="width:12px;height:12px;border-radius:3px;background:' + c + ';flex:none"></span>' + priBadge(k) + '<span style="font-weight:700;font-size:13px">' + esc(P[k].name) + '</span>' + (sel ? '<button onclick="' + on(() => setState({ view: 'ov' })) + '" style="margin-left:auto;margin-right:12px;flex:none;white-space:nowrap;border:1px solid #C9CBC4;background:#FFFFFF;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:11px">Project card →</button>' : '') + '</div><div></div></div>';
-      if (!rows.length) {
-        h += '<div style="display:grid;grid-template-columns:' + LBL + 'px 1fr"><div style="padding:2px 0 8px 20px;font-size:11.5px;color:#6B7075">No plan yet' + (canEdit() ? ' — <button onclick="' + on(() => editTL(null, k)) + '" style="border:0;background:none;padding:0;color:#23699A;cursor:pointer;font-size:11.5px">add the first milestone</button>' : '') + '</div><div></div></div>';
-        return;
-      }
-      if (!sel) {
-        h += '<div style="display:grid;grid-template-columns:' + LBL + 'px 1fr;align-items:center;min-height:28px"><div style="padding:0 12px 6px 20px"><button onclick="' + on(() => setState({ sel: k })) + '" style="border:0;background:none;padding:0;color:#23699A;cursor:pointer;font-size:11.5px">' + rows.length + (rows.length === 1 ? ' item' : ' items') + ' — open plan →</button></div><div style="position:relative;height:100%;min-height:28px">';
-        if (tp !== null) h += '<div style="position:absolute;left:' + tp + '%;top:0;bottom:0;border-left:2px solid #E0A526;z-index:0"></div>';
-        rows.forEach((r) => {
-          if (r.kind === 'ms') h += '<div title="' + esc(r.name + ' — ' + r.s) + '" style="position:absolute;left:calc(' + (pct(r.s) + (100 / (span / 864e5)) / 2) + '% - 6px);top:50%;width:10px;height:10px;margin-top:-5px;transform:rotate(45deg);background:' + (r.prop ? '#FFFFFF' : c) + ';border:2px solid ' + c + ';box-sizing:border-box;z-index:2"></div>';
-          else { const l = pct(r.s), w = Math.max(pct(r.e, 1) - l, 0.6); h += '<div title="' + esc(r.name + ' — ' + r.s + ' → ' + r.e) + '" style="position:absolute;left:' + l + '%;width:' + w + '%;top:9px;bottom:9px;border-radius:4px;background:' + c + ';opacity:' + (r.prop ? .35 : .6) + ';z-index:1"></div>'; }
-        });
-        h += '</div></div>';
-        return;
-      }
-      if (canEdit()) h += '<div style="padding:2px 0 6px 20px"><button onclick="' + on(() => editTL(null, k)) + '" style="border:1px solid #C9CBC4;background:#FFFFFF;border-radius:6px;padding:3px 9px;cursor:pointer;font-size:11.5px">+ Add milestone / phase</button></div>';
-      rows.forEach((r) => {
-        h += '<div' + (canEdit() ? ' onclick="' + on(() => editTL(r, k)) + '" title="click to edit"' : '') + ' style="display:grid;grid-template-columns:' + LBL + 'px 1fr;align-items:center;min-height:30px;' + (canEdit() ? 'cursor:pointer;' : '') + '">';
-        h += '<div style="padding:3px 12px 3px 20px;font-size:12px;line-height:1.35"><span' + (r.prop ? ' style="color:#3F444A"' : ' style="font-weight:600"') + '>' + esc(r.name) + '</span>' + (r.note ? '<div style="font-size:11px;color:#9B1C1C;margin-top:1px">' + esc(r.note) + '</div>' : '') + '</div>';
-        h += '<div style="position:relative;height:100%;min-height:30px">';
-        if (tp !== null) h += '<div style="position:absolute;left:' + tp + '%;top:0;bottom:0;border-left:2px solid #E0A526;z-index:0"></div>';
-        if (r.kind === 'ms') {
-          h += '<div title="' + esc(r.name + ' — ' + r.s + (r.prop ? ' (proposed)' : '')) + '" style="position:absolute;left:calc(' + (pct(r.s) + (100 / (span / 864e5)) / 2) + '% - 8px);top:50%;width:14px;height:14px;margin-top:-7px;transform:rotate(45deg);background:' + (r.prop ? '#FFFFFF' : c) + ';border:2px ' + (r.prop ? 'dashed' : 'solid') + ' ' + c + ';box-sizing:border-box;z-index:1"></div>';
-        } else {
-          const l = pct(r.s), w = Math.max(pct(r.e, 1) - l, 0.6);
-          h += '<div title="' + esc(r.name + ' — ' + r.s + ' → ' + r.e + (r.prop ? ' (proposed)' : '')) + '" style="position:absolute;left:' + l + '%;width:' + w + '%;top:7px;bottom:7px;border-radius:5px;background:' + c + ';z-index:1;' + (r.prop ? 'outline:2px dashed rgba(255,255,255,.85);outline-offset:-4px;' : '') + '"></div>';
-        }
-        h += '</div></div>';
-      });
-    });
-  });
-  h += '<div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:14px;font-size:11.5px;color:#4A4F55"><span><span style="display:inline-block;width:2px;height:12px;background:#E0A526;vertical-align:middle;margin-right:6px"></span>today</span><span><span style="display:inline-block;width:10px;height:10px;transform:rotate(45deg);border:2px solid #1B1D1F;margin-right:8px;vertical-align:middle"></span>milestone (hollow = proposed)</span></div>';
-  h += '</div></section>';
   return h;
 }
 
@@ -440,6 +453,8 @@ function editCard(k) {
   openForm('Edit project — ' + P[k].name, [
     ['name', 'Project name', 'text', P[k].name],
     ['pri', 'Priority', 'sel', P[k].pri || 3, [[1, 'P1 · Top'], [2, 'P2 · High'], [3, 'P3 · Normal'], [4, 'P4 · Parked']]],
+    ['c', 'Colour', 'sel', P[k].c, (PALETTE.some((x) => x[0] === P[k].c) ? [] : [[P[k].c, 'Current (' + P[k].c + ', not in the palette)']]).concat(PALETTE.map(([v, l]) => [v, l + ' ' + v]))],
+    ['sym', 'Marker', 'sel', P[k].sym || '', (P[k].sym ? [] : [['', '— none —']]).concat(SYMS.map(([v, g]) => [v, g + ' ' + v]))],
     ['status', 'Status', 'text', o.status || ''],
     ['owner', 'Owner', 'text', o.owner || ''],
     ['who', 'With', 'text', o.who || ''],
@@ -451,9 +466,13 @@ function editCard(k) {
     const card = { owner: v.owner, who: v.who, horizon: v.horizon, status: v.status, next: v.next,
       goals: v.goals.split('\n').map((s) => s.trim()).filter(Boolean),
       plan: v.plan.split('\n').map((s) => s.trim()).filter(Boolean).map((s) => { const i = s.lastIndexOf('|'); return i < 0 ? [s, ''] : [s.slice(0, i).trim(), s.slice(i + 1).trim()]; }) };
-    const proj = Object.assign({}, P[k], { name: v.name || P[k].name, pri: Number(v.pri) });
+    const proj = Object.assign({}, P[k], { name: v.name || P[k].name, pri: Number(v.pri), c: v.c });
+    if (v.sym) proj.sym = v.sym; else delete proj.sym;
+    const clash = Object.keys(P).find((z) => z !== k && P[z].c === proj.c && (P[z].sym || '') === (proj.sym || ''));
+    if (clash && !confirm('“' + P[clash].name + '” already uses this colour and marker — the two projects would look the same. Save anyway?')) return null;
+    const look = proj.c !== P[k].c || (proj.sym || '') !== (P[k].sym || '');
     const ops = [{ op: 'put', coll: 'OV', id: k, item: card, s: proj.name + ' card: ' + (v.status || '') + (v.next ? ' · next: ' + v.next.slice(0, 80) : '') }];
-    if (proj.name !== P[k].name || proj.pri !== P[k].pri) ops.push({ op: 'put', coll: 'P', id: k, item: proj, s: proj.name + (proj.pri !== P[k].pri ? ' → P' + proj.pri : '') + (proj.name !== P[k].name ? ' (renamed from ' + P[k].name + ')' : '') });
+    if (proj.name !== P[k].name || proj.pri !== P[k].pri || look) ops.push({ op: 'put', coll: 'P', id: k, item: proj, s: proj.name + (proj.pri !== P[k].pri ? ' → P' + proj.pri : '') + (proj.name !== P[k].name ? ' (renamed from ' + P[k].name + ')' : '') + (look ? ' · look: ' + ((PALETTE.find((x) => x[0] === proj.c) || [0, proj.c])[1]) + ' ' + symName(proj.sym) : '') });
     return ops;
   });
 }
@@ -515,7 +534,7 @@ function logPanel() {
 function render() {
   H.length = 0;
   const sel = state.sel || null, tech = false, who = (state.who && state.who.length) ? state.who : null;
-  const platOn = !!state.plat, routineOn = !!state.routine, loadOn = !!state.load, view = state.view || 'ov', tlv = view === 'tl', cal = view === 'cal', ves = (state.ves && state.ves.length) ? state.ves : null;
+  const platOn = !!state.plat, routineOn = !!state.routine, loadOn = !!state.load, view = (state.view === 'tl' ? 'ov' : state.view) || 'ov', cal = view === 'cal', ves = (state.ves && state.ves.length) ? state.ves : null;
 
   let blocks = B.slice();
   if (who) blocks = blocks.filter((x) => whoOf(x).some((k) => who.includes(k)));
@@ -532,7 +551,7 @@ function render() {
   h += '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#5F6368">Novella · Modi\'in R&amp;D</div>';
   h += '<h1 style="margin:4px 0 0;font-size:26px;font-weight:700;letter-spacing:-.01em">Who is doing what, when</h1>' + syncBar() + '</div>';
   h += '<nav aria-label="Views" style="display:flex;border:1px solid #C9CBC4;border-radius:8px;overflow:hidden;background:#FFFFFF;flex:none">';
-  [['ov', 'Projects'], ['cal', 'Calendar'], ['tl', 'Timeline'], ['pl', 'Platforms']].forEach(([v, l], i) => { h += '<button onclick="' + on(() => setState({ view: v })) + '" aria-pressed="' + (view === v) + '" style="' + seg(view === v, i === 0) + '">' + l + '</button>'; });
+  [['ov', 'Projects'], ['cal', 'Calendar'], ['pl', 'Platforms']].forEach(([v, l], i) => { h += '<button onclick="' + on(() => setState({ view: v })) + '" aria-pressed="' + (view === v) + '" style="' + seg(view === v, i === 0) + '">' + l + '</button>'; });
   h += '</nav></header>';
   // view-specific toolbar (its own row, so the view tabs above never move)
   if (cal) {
@@ -542,6 +561,7 @@ function render() {
   h += '<button onclick="' + on(() => setState({ past: !state.past })) + '" aria-pressed="' + !!state.past + '" style="' + chip(!!state.past) + '">Past weeks</button>';
   h += '<button onclick="' + on(() => setState({ routine: !routineOn })) + '" aria-pressed="' + routineOn + '" style="' + chip(routineOn) + '">Routine</button>';
   h += '<button onclick="' + on(() => setState({ load: !loadOn })) + '" aria-pressed="' + loadOn + '" style="' + chip(loadOn) + '">Load</button>';
+  h += '<button onclick="' + on(() => setState({ key: !state.key })) + '" aria-pressed="' + !!state.key + '" style="' + chip(!!state.key) + '">Project key</button>';
   if (canEdit()) h += '<button onclick="' + on(() => editBlock(null)) + '" style="' + chip(true, '#2B6CB0') + 'margin-left:auto">+ Add task</button>';
   h += '</div>';
   }
@@ -561,26 +581,42 @@ function render() {
   h += '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#5F6368;margin-right:4px">Vessel</span>';
   VESSELS.concat(['TBC']).forEach((v) => { const onv = !!ves && ves.includes(v), n = VR.filter((r) => r.v === v).length; h += '<button onclick="' + on(() => { const cur = (state.ves || []).filter((z) => z !== v); setState({ ves: onv ? cur : cur.concat([v]) }); }) + '" aria-pressed="' + onv + '" style="' + chip(onv) + (n ? '' : 'opacity:.55;') + '">' + (v === 'TBC' ? 'Not assigned' : v) + '</button>'; });
   h += '</div>';
-  } else h += '<div style="margin-bottom:16px;font-size:12.5px;color:#4A4F55">' + ({ ov: 'Goals and the high-level plan for each project. Pick one on the left to focus.', tl: 'Each project in one line. Click a project for its phases and milestones; dashed = proposed.', pl: 'What each bioreactor vessel is booked for, and how busy it is.' })[view] + '</div>';
+  if (state.key) {
+    h += '<div style="background:#FFFFFF;border:1px solid #E1E2DC;border-radius:10px;padding:10px 12px;margin:-6px 0 16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px 14px;font-size:12px">';
+    THEMES.forEach(([n]) => Object.keys(P).filter((k) => P[k].theme === n).sort(byPri).forEach((k) => { h += '<button onclick="' + on(() => setState({ sel: sel === k ? null : k })) + '" style="display:flex;gap:7px;align-items:center;border:0;background:none;padding:2px 0;cursor:pointer;text-align:left;font-size:12px;color:#1B1D1F;' + (sel && sel !== k ? 'opacity:.45;' : '') + (sel === k ? 'font-weight:700;' : '') + '">' + sw(k) + '<span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(P[k].name) + '</span></button>'; }));
+    h += '</div>';
+  }
+  } else h += '<div style="margin-bottom:16px;font-size:12.5px;color:#4A4F55">' + ({ ov: sel ? 'Goals, plan, phases and milestones for one project.' : 'The whole portfolio on one screen: each project in one line, on the same timeline. Click a line for its card and plan.', pl: 'What each bioreactor vessel is booked for, and how busy it is.' })[view] + '</div>';
 
   // layout
-  h += '<div style="display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start">';
-  h += '<aside style="flex:1 1 220px;max-width:260px;min-width:0;background:#FFFFFF;border:1px solid #E1E2DC;border-radius:12px;padding:14px">';
-  h += '<button onclick="' + on(() => setState({ sel: null })) + '" style="width:100%;min-height:40px;padding:8px 10px;border-radius:8px;cursor:pointer;font-weight:600;font-size:12.5px;text-align:left;border:1px solid ' + (sel ? '#E1E2DC' : '#1B1D1F') + ';background:' + (sel ? '#FFFFFF' : '#1B1D1F') + ';color:' + (sel ? '#1B1D1F' : '#FFFFFF') + '">All projects</button>';
+  // narrow screens: the rail is hidden and this drop-down takes its place
+  h += '<select class="projsel" aria-label="Project" onchange="' + on(() => { const v = document.querySelector('.projsel').value; setState({ sel: v || null }); }) + '" style="margin:0 0 12px;min-height:38px;padding:6px 10px;border:1px solid #C9CBC4;border-radius:8px;background:#FFFFFF;font:inherit;font-size:13px;max-width:100%"><option value="">Project: All</option>';
+  THEMES.forEach(([n, label]) => { const ks = Object.keys(P).filter((k) => P[k].theme === n).sort(byPri); if (ks.length) h += '<optgroup label="' + esc(label) + '">' + ks.map((k) => '<option value="' + esc(k) + '"' + (sel === k ? ' selected' : '') + '>' + esc(symName(P[k].sym) + ' ' + P[k].name + ' · P' + (P[k].pri || 3)) + '</option>').join('') + '</optgroup>'; });
+  h += '</select>';
+  // project rail: slim (56 px) by default, ⟨⟩ expands to the full list; remembered per device
+  const wide = !!state.railWide;
+  h += '<div style="display:flex;gap:20px;align-items:flex-start">';
+  h += '<aside class="rail" style="flex:none;width:' + (wide ? 260 : 56) + 'px;box-sizing:border-box;background:#FFFFFF;border:1px solid #E1E2DC;border-radius:12px;padding:' + (wide ? '10px 14px 14px' : '8px 0 10px') + ';display:flex;flex-direction:column;align-items:' + (wide ? 'stretch' : 'center') + ';position:sticky;top:10px;max-height:calc(100vh - 20px);overflow-y:auto">';
+  h += '<button onclick="' + on(() => { try { localStorage.setItem('novella_planner_rail', wide ? '0' : '1'); } catch (e) {} setState({ railWide: !wide }); }) + '" title="' + (wide ? 'Collapse the project menu' : 'Show project names') + '" style="' + (wide ? 'align-self:flex-end;' : '') + 'border:1px solid #E1E2DC;background:#FFFFFF;border-radius:6px;cursor:pointer;font-size:12px;line-height:1;padding:4px 7px;color:#4A4F55;margin-bottom:8px">' + (wide ? '⟨' : '⟩') + '</button>';
+  if (wide) h += '<button onclick="' + on(() => setState({ sel: null })) + '" style="width:100%;min-height:40px;padding:8px 10px;border-radius:8px;cursor:pointer;font-weight:600;font-size:12.5px;text-align:left;border:1px solid ' + (sel ? '#E1E2DC' : '#1B1D1F') + ';background:' + (sel ? '#FFFFFF' : '#1B1D1F') + ';color:' + (sel ? '#1B1D1F' : '#FFFFFF') + '">All projects</button>';
+  else h += '<button class="rbtn" onclick="' + on(() => setState({ sel: null })) + '" title="All projects" style="border:1px solid ' + (sel ? '#E1E2DC' : '#1B1D1F') + ';background:' + (sel ? '#FFFFFF' : '#1B1D1F') + ';color:' + (sel ? '#1B1D1F' : '#FFFFFF') + ';font-weight:700;font-size:11px">All</button>';
   THEMES.forEach(([n, label]) => {
-    h += '<div style="margin-top:14px"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:#5F6368;margin-bottom:4px;line-height:1.4">' + esc(label) + '</div>';
-    Object.keys(P).filter((k) => P[k].theme === n).sort(byPri).forEach((k) => {
-      const onp = sel === k;
-      h += '<button onclick="' + on(() => setState({ sel: onp ? null : k })) + '" style="display:flex;gap:9px;align-items:center;width:100%;min-height:40px;padding:6px 8px;margin-bottom:2px;border-radius:8px;cursor:pointer;font-size:12.5px;color:#1B1D1F;text-align:left;border:1px solid ' + (onp ? P[k].c : 'transparent') + ';background:' + (onp ? P[k].c + '14' : 'transparent') + '"><span style="width:12px;height:12px;border-radius:3px;background:' + P[k].c + ';flex:none"></span><span style="font-weight:600;flex:1;min-width:0">' + esc(P[k].name) + '</span>' + priBadge(k) + '</button>';
+    const ks = Object.keys(P).filter((k) => P[k].theme === n).sort(byPri);
+    if (!ks.length) return;
+    if (wide) h += '<div style="margin-top:14px"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:#5F6368;margin-bottom:4px;line-height:1.4">' + esc(label) + '</div>';
+    else h += '<div title="' + esc(label) + '" style="width:36px;margin:9px 0 5px;border-top:1px solid #D5D6D0;text-align:center;line-height:0"><span style="background:#FFFFFF;padding:0 3px;font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:#6B7075;line-height:1;position:relative;top:-1px">' + (n < 5 ? n : 'T') + '</span></div>';
+    ks.forEach((k) => {
+      const onp = sel === k, q = PRI[P[k].pri || 3];
+      if (wide) h += '<button onclick="' + on(() => setState({ sel: onp ? null : k })) + '" style="display:flex;gap:9px;align-items:center;width:100%;min-height:40px;padding:6px 8px;margin-bottom:2px;border-radius:8px;cursor:pointer;font-size:12.5px;color:#1B1D1F;text-align:left;border:1px solid ' + (onp ? pc(k) : 'transparent') + ';background:' + (onp ? pc(k) + '14' : 'transparent') + '">' + sw(k) + '<span style="font-weight:600;flex:1;min-width:0">' + esc(P[k].name) + '</span>' + priBadge(k) + '</button>';
+      else h += '<button class="rbtn" onclick="' + on(() => setState({ sel: onp ? null : k })) + '" title="' + esc(P[k].name + ' · ' + q[0] + ' ' + q[1]) + '" aria-pressed="' + onp + '" style="margin:2px 0;border:2px solid ' + (onp ? '#1B1D1F' : 'transparent') + ';background:transparent"><span style="width:30px;height:30px;border-radius:6px;background:' + pc(k) + ';display:flex;align-items:center;justify-content:center;' + (sel && !onp ? 'opacity:.45;' : '') + '">' + mk(k, 13) + '</span><span class="pn" style="background:' + q[3] + ';color:' + q[2] + '">' + (P[k].pri || 3) + '</span></button>';
     });
-    h += '</div>';
+    if (wide) h += '</div>';
   });
-  h += '</aside><main style="flex:999 1 640px;min-width:0;display:flex;flex-direction:column;gap:16px">';
+  h += '</aside><main style="flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:16px">';
 
   h += logPanel();
   if (!Object.keys(P).length) h += '<section style="background:#FFFFFF;border:1px solid #E1E2DC;border-radius:12px;padding:28px;text-align:center;color:#4A4F55;font-size:14px">' + (!effKey() ? 'Open the planner once with the team link (ask Yoni for it). After that this address works on its own.' : SYNC.status === 'empty' ? 'The planner sheet is empty.' : SYNC.status === 'error' ? 'Couldn’t load the plan: ' + esc(SYNC.err) : 'Loading the plan…') + '</section>';
   else if (view === 'ov') h += renderOverview(sel);
-  else if (tlv) h += renderTimeline(sel);
   else if (view === 'pl') h += renderPlatforms(sel);
   else for (let w = state.past ? 0 : CURW; w < NWEEKS; w++) {
     const lo = w * 10, hi = lo + 10;
@@ -620,7 +656,8 @@ function render() {
       }
       const x = it.x, pp = PEOPLE[x.lane] || PEOPLE.yoni, c = (P[x.p] || { c: '#999' }).c, dim = sel && x.p !== sel, hit = sel && x.p === sel;
       const done = x.st === 'done', blk = x.st === 'blocked';
-      h += '<div class="blk' + (x.prop ? ' prop' : '') + '"' + (canEdit() ? ' onclick="' + on(() => editBlock(x)) + '"' : '') + ' title="' + esc(ttl(x) + '\n' + namesOf(x) + ' · ' + (P[x.p] || { name: '?' }).name + ' · ' + fmt(x.len * .5) + ' d' + (x.prop ? ' · proposed' : '') + (x.st ? ' · ' + x.st : '') + (x.t && x.t !== ttl(x) ? '\n\n' + x.t : '') + (x.note ? '\n\nNote: ' + x.note : '') + (x.by ? '\n\nlast change: ' + x.by : '') + (canEdit() ? '\n(click to edit)' : '')) + '" style="' + pos + 'background:' + c + ';opacity:' + (dim ? .15 : done ? .5 : 1) + ';' + (canEdit() ? 'cursor:pointer;' : '') + (hit ? 'box-shadow:0 0 0 2px #FFFFFF,0 0 0 4px ' + c + ';' : '') + (blk ? 'box-shadow:0 0 0 3px #E53E3E;' : '') + '"><span style="display:flex;flex:none">' + whoOf(x).map((k, i) => { const q = PEOPLE[k] || pp; return '<span class="dot" style="background:' + q.c + (i ? ';margin-left:-7px' : '') + '">' + (i === 0 && done ? '✓' : i === 0 && blk ? '!' : q.name[0]) + '</span>'; }).join('') + '</span><span class="tx"' + (done ? ' style="text-decoration:line-through"' : '') + '>' + esc(ttl(x)) + (x.note ? ' <span style="opacity:.8">✎</span>' : '') + '</span></div>';
+      const m1 = mk(x.p, 9);
+      h += '<div class="blk' + (x.prop ? ' prop' : '') + (m1 ? ' hasmk' : '') + '"' + (canEdit() ? ' onclick="' + on(() => editBlock(x)) + '"' : '') + ' title="' + esc(ttl(x) + '\n' + namesOf(x) + ' · ' + (P[x.p] || { name: '?' }).name + ' · ' + fmt(x.len * .5) + ' d' + (x.prop ? ' · proposed' : '') + (x.st ? ' · ' + x.st : '') + (x.t && x.t !== ttl(x) ? '\n\n' + x.t : '') + (x.note ? '\n\nNote: ' + x.note : '') + (x.by ? '\n\nlast change: ' + x.by : '') + (canEdit() ? '\n(click to edit)' : '')) + '" style="' + pos + 'background:' + c + ';opacity:' + (dim ? .15 : done ? .5 : 1) + ';' + (canEdit() ? 'cursor:pointer;' : '') + (hit ? 'box-shadow:0 0 0 2px #FFFFFF,0 0 0 4px ' + c + ';' : '') + (blk ? 'box-shadow:0 0 0 3px #E53E3E;' : '') + '"><span style="display:flex;flex:none">' + whoOf(x).map((k, i) => { const q = PEOPLE[k] || pp; return '<span class="dot" style="background:' + q.c + (i ? ';margin-left:-7px' : '') + '">' + (i === 0 && done ? '✓' : i === 0 && blk ? '!' : q.name[0]) + '</span>'; }).join('') + '</span><span class="tx"' + (done ? ' style="text-decoration:line-through"' : '') + '>' + esc(ttl(x)) + (x.note ? ' <span style="opacity:.8">✎</span>' : '') + '</span>' + (m1 ? '<span class="mk">' + m1 + '</span>' : '') + '</div>';
     });
     h += '</div>';
 
@@ -631,8 +668,8 @@ function render() {
       const pr = Math.max(1, pack(pit));
       h += '<div style="margin-top:10px;padding-top:8px;border-top:1px solid #E1E2DC"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#5F6368;margin-bottom:4px">Platforms</div><div style="display:grid;grid-template-columns:repeat(10,minmax(0,1fr));grid-template-rows:repeat(' + pr + ',minmax(26px,auto))">';
       pit.forEach((it) => {
-        const c = P[it.x.p].c, dim = sel && it.x.p !== sel;
-        h += '<div class="pbx" title="' + esc(it.x.plat + ' — ' + it.x.t) + '" style="grid-column:' + (it.a + 1) + ' / span ' + it.len + ';grid-row:' + (it.row + 1) + ';margin:2px;padding:3px 8px;border-radius:10px;font-size:10.5px;font-weight:600;line-height:1.3;overflow-wrap:anywhere;min-width:0;background:' + c + '1F;border:1px ' + (it.x.prop ? 'dashed' : 'solid') + ' ' + c + ';color:' + c + ';opacity:' + (dim ? .15 : 1) + '">' + esc(it.x.plat + ' · ' + it.x.t) + '</div>';
+        const c = pc(it.x.p), dim = sel && it.x.p !== sel;
+        h += '<div title="' + esc(it.x.plat + ' — ' + it.x.t) + '" style="grid-column:' + (it.a + 1) + ' / span ' + it.len + ';grid-row:' + (it.row + 1) + ';margin:2px;padding:3px 8px;border-radius:10px;font-size:10.5px;font-weight:600;line-height:1.3;overflow-wrap:anywhere;min-width:0;background:' + c + '1F;border:1px ' + (it.x.prop ? 'dashed' : 'solid') + ' ' + c + ';color:' + c + ';opacity:' + (dim ? .15 : 1) + ';display:flex;gap:5px;align-items:flex-start"><span style="margin-top:2px">' + mk(it.x.p, 8, c) + '</span><span class="pbx">' + esc(it.x.plat + ' · ' + it.x.t) + '</span></div>';
       });
       h += '</div></div>';
     }
@@ -660,7 +697,7 @@ function render() {
   Q.forEach((row) => {
     const [p, name, need, now, wt] = row;
     const v = (tech ? wt : now) || '', good = v.indexOf('on calendar') === 0, red = v === 'needs Nadav' || v === 'plan cover' || v === 'clash';
-    h += '<div' + (canEdit() ? ' onclick="' + on(() => editQ(row)) + '" title="click to edit"' : '') + ' style="display:grid;grid-template-columns:12px minmax(0,1fr) 130px;gap:10px;padding:8px 0;border-top:1px solid #EEEEEA;align-items:start;' + (canEdit() ? 'cursor:pointer;' : '') + 'opacity:' + (sel && p !== sel ? .3 : 1) + '"><span style="width:10px;height:10px;border-radius:3px;margin-top:4px;background:' + (P[p] || { c: '#999' }).c + '"></span>';
+    h += '<div' + (canEdit() ? ' onclick="' + on(() => editQ(row)) + '" title="click to edit"' : '') + ' style="display:grid;grid-template-columns:14px minmax(0,1fr) 130px;gap:10px;padding:8px 0;border-top:1px solid #EEEEEA;align-items:start;' + (canEdit() ? 'cursor:pointer;' : '') + 'opacity:' + (sel && p !== sel ? .3 : 1) + '"><span style="margin-top:2px;display:flex">' + sw(p, 12) + '</span>';
     h += '<span style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-weight:600">' + esc(name) + '</span><span style="font-size:11.5px;color:#5F6368;line-height:1.45">' + esc(need) + '</span></span>';
     h += '<span style="text-align:right;font-family:\'IBM Plex Mono\',monospace;font-size:11.5px;padding:2px 6px;border-radius:4px;justify-self:end;' + (good ? 'background:#E3F2E8;color:#1D5E36;' : red ? 'background:#FDE3E3;color:#9B1C1C;' : 'background:#EEEEEA;color:#3F444A;') + '">' + esc(v) + '</span></div>';
   });
