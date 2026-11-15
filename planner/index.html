@@ -496,13 +496,23 @@ function adminLogout() {
   SYNC.akey = null; try { localStorage.removeItem('planner_admin_key'); } catch (e) {} SYNC.rev = 0; syncGet(true);
 }
 function applyUpdate() {
-  openForm('Apply an update from PM', [['json', 'Paste the update PM gave you', 'area', '', 8]], (v) => {
+  openForm('Apply an update from PM', [['json', 'The update (loaded from the file, or pasted)', 'area', '', 8]], (v) => {
     let u; try { u = JSON.parse(v.json); } catch (e) { alert('That isn’t a valid update (not JSON).'); return null; }
     const ops = (u.ops || []).filter((o) => o && (o.op === 'put' || o.op === 'del') && o.coll && o.id);
     if (!ops.length) { alert('No changes found in that update.'); return null; }
     if (!confirm((u.note ? u.note + '\n\n' : '') + ops.length + ' change(s):\n\n' + ops.map((o) => '• ' + (o.op === 'del' ? 'DELETE ' : '') + (o.s || o.coll + ' ' + o.id)).join('\n') + '\n\nApply?')) return null;
     return ops.map((o) => Object.assign({}, o, { s: '[PM] ' + (o.s || '') }));
-  }, null, 'PM (Claude) can’t write to the Sheet directly. It gives you a block of text; paste it here, check the list of changes, and apply.');
+  }, null, 'PM (Claude) can’t write to the Sheet directly. It gives you an update file (.json): load it here (or paste its text), check the list of changes, and apply.');
+  const f = document.getElementById('mform'), ta = f && f.elements.json; if (!ta) return;
+  const w = document.createElement('div'); w.style.cssText = 'display:flex;align-items:center;gap:10px;font-size:12px;color:#4A4F55';
+  w.innerHTML = '<label style="border:1px solid #C9CBC4;border-radius:6px;padding:6px 10px;cursor:pointer;background:#F6F6F3;font-weight:600">Choose file…<input type="file" accept=".json,application/json,.txt,text/plain" style="display:none"></label><span>or drop the .json file on the box below</span>';
+  const msg = w.lastChild, fi = w.querySelector('input');
+  const load = (file) => { if (!file) return; const r = new FileReader(); r.onload = () => { ta.value = String(r.result); let n = ''; try { const u = JSON.parse(ta.value); n = ' · ' + ((u.ops || []).length) + ' change(s)'; } catch (e) { n = ' · not valid JSON'; } msg.textContent = 'Loaded: ' + file.name + n; }; r.readAsText(file); };
+  fi.onchange = () => load(fi.files[0]);
+  ta.addEventListener('dragover', (e) => { e.preventDefault(); ta.style.outline = '2px dashed #23699A'; });
+  ta.addEventListener('dragleave', () => { ta.style.outline = ''; });
+  ta.addEventListener('drop', (e) => { e.preventDefault(); ta.style.outline = ''; load(e.dataTransfer.files[0]); });
+  f.insertBefore(w, ta.parentNode);
 }
 function syncBar() {
   const mono = 'font-family:\'IBM Plex Mono\',monospace;';
