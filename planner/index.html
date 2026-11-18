@@ -57,6 +57,7 @@ const PEOPLE = {
 //         OV = project cards, VR = vessel runs
 const b = (lane, date, h, len, p, t, o) => Object.assign({ lane, date, h, len, p, t }, o || {});
 let B = [], PB = [], Q = [], TL = {}, OV = {};
+let M = {};   // project membership (18 Nov): person key → [project ids]. Each person picks their own; team-editable.
 
 // ---- Bioreactor vessels (Platforms view + vessel filter) ----
 // v = vessel, or 'TBC' until assigned. fam = which kind it needs (shown while TBC).
@@ -82,8 +83,9 @@ const todayIso = (() => { const d = new Date(); return d.getFullYear() + '-' + S
 const TODAY = IDX[todayIso] ?? -1;
 
 let state = {};
-try { const v0 = localStorage.getItem('novella_planner_view'); if (v0) state.view = v0 === 'tl' ? 'ov' : v0; state.railWide = localStorage.getItem('novella_planner_rail') === '1'; } catch (e) {}
+try { const v0 = localStorage.getItem('novella_planner_view'); if (v0) state.view = v0 === 'tl' ? 'ov' : v0; state.railWide = localStorage.getItem('novella_planner_rail') === '1'; state.mine = localStorage.getItem('novella_planner_mine') === '1'; } catch (e) {}
 const H = [];
+function toggleMine() { const v = !state.mine; try { localStorage.setItem('novella_planner_mine', v ? '1' : '0'); } catch (e) {} setState({ mine: v }); }
 function setState(p) { state = Object.assign({}, state, p); if (p.view) { try { localStorage.setItem('novella_planner_view', p.view); } catch (e) {} } render(); }
 function on(fn) { H.push(fn); return 'H[' + (H.length - 1) + ']()'; }
 function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
@@ -161,6 +163,10 @@ function cardHtml(k) {
   h += '<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start"><div style="display:flex;gap:8px;align-items:center;min-width:0">' + sw(k, 16) + priBadge(k, 1) + '<div style="font-weight:700;font-size:14.5px;line-height:1.3">' + esc(P[k].name) + '</div></div>';
   h += '<span style="' + MONO + 'font-size:10.5px;padding:2px 7px;border-radius:4px;background:' + c + '14;color:' + c + '">' + esc(o.status || '') + '</span></div>';
   h += '<div style="font-size:11.5px;color:#4A4F55;display:flex;flex-wrap:wrap;gap:4px 12px"><span><b style="color:#1B1D1F">Owner</b> ' + esc(o.owner || '—') + '</span><span><b style="color:#1B1D1F">With</b> ' + esc(o.who || '—') + '</span><span><b style="color:#1B1D1F">Horizon</b> ' + esc(o.horizon || '—') + '</span></div>';
+  { const mem = membersOf(k), me = meKey(), inP = !!me && mem.includes(me);
+    h += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11.5px;color:#4A4F55"><b style="color:#1B1D1F">Team</b>' + (mem.length ? '<span style="display:inline-flex;align-items:center">' + memberDots(k, 18) + '</span><span>' + esc(mem.map(pName).join(', ')) + '</span>' : '<span style="color:#9AA0A6">nobody has joined yet</span>');
+    if (canEdit()) h += '<button onclick="' + on(() => toggleMember(k)) + '" style="margin-left:auto;border:1px solid ' + (inP ? '#C9CBC4' : pc(k)) + ';background:' + (inP ? '#FFFFFF' : pc(k)) + ';color:' + (inP ? '#4A4F55' : '#FFFFFF') + ';border-radius:6px;padding:3px 9px;cursor:pointer;font-size:11.5px">' + (inP ? 'Leave' : 'I’m in this project') + '</button>';
+    h += '</div>'; }
   if (o.goals) h += '<div><div style="' + MONO + 'font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#6B7075;margin-bottom:3px">Objectives</div><ul style="margin:0;padding-left:18px;line-height:1.45;font-size:12.5px">' + o.goals.map((g) => '<li>' + esc(g) + '</li>').join('') + '</ul></div>';
   if (o.plan) {
     h += '<div><div style="' + MONO + 'font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#6B7075;margin-bottom:3px">Plan</div>';
@@ -178,14 +184,14 @@ function renderPortfolio() {
   const LBL = 440, ax = ganttAxis(LBL);
   let h = '<section style="background:#FFFFFF;border:1px solid #E1E2DC;border-radius:12px;overflow-x:auto"><div style="min-width:1150px;padding:10px 12px 14px">' + ax.h;
   THEMES.forEach(([n, label]) => {
-    const ks = Object.keys(P).filter((k) => P[k].theme === n).sort(byPri);
+    const ks = Object.keys(P).filter((k) => P[k].theme === n && showP(k)).sort(byPri);
     if (!ks.length) return;
     h += '<div style="' + MONO + 'font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:#5F6368;margin:14px 0 2px">' + esc(label) + '</div>';
     ks.forEach((k) => {
       const o = OV[k] || {}, c = pc(k), rows = tlRows(k);
       h += '<div class="pfl" onclick="' + on(() => setState({ sel: k })) + '" title="Open the project card and plan" style="display:grid;grid-template-columns:' + LBL + 'px 1fr;border-top:1px solid #EEEEEA;cursor:pointer;min-height:48px">';
       h += '<div style="padding:6px 14px 6px 2px;display:flex;flex-direction:column;gap:3px;min-width:0">';
-      h += '<div style="display:flex;align-items:center;gap:7px;min-width:0">' + sw(k) + priBadge(k) + '<span style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">' + esc(P[k].name) + '</span><span style="flex:none;margin-left:auto;font-size:11.5px;color:#5F6368">' + esc(o.owner || '—') + '</span></div>';
+      h += '<div style="display:flex;align-items:center;gap:7px;min-width:0">' + sw(k) + priBadge(k) + '<span style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">' + esc(P[k].name) + '</span><span style="flex:none;margin-left:auto;display:inline-flex;align-items:center">' + memberDots(k, 16) + '</span><span style="flex:none;font-size:11.5px;color:#5F6368">' + esc(o.owner || '—') + '</span></div>';
       h += '<div style="display:flex;align-items:center;gap:7px;min-width:0;font-size:11.5px;color:#4A4F55;padding-left:21px">' + (o.status ? '<span style="flex:none;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' + MONO + 'font-size:10.5px;padding:1px 6px;border-radius:4px;background:' + c + '14;color:' + c + '">' + esc(o.status) + '</span>' : '') + '<span title="' + esc(o.next || '') + '" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0"><b style="color:#1B1D1F">Next:</b> ' + esc(o.next || '—') + '</span></div>';
       h += '</div><div style="position:relative;min-height:48px">' + todayLine(ax);
       if (!rows.length) h += '<div style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:11px;color:#9AA0A6">no plan yet</div>';
@@ -295,6 +301,40 @@ const SYNC = { key: null, akey: null, role: null, who: null, rev: 0, status: 'id
 const effKey = () => SYNC.akey || SYNC.key;
 const canEdit = () => !!SYNC.role && !!SYNC.who;
 const isAdmin = () => SYNC.role === 'admin';
+// ---- Project membership (18 Nov) ----
+const meKey = () => (SYNC.who ? SYNC.who.toLowerCase() : null);
+const pName = (pk) => (PEOPLE[pk] || { name: pk.charAt(0).toUpperCase() + pk.slice(1) }).name;
+const pCol = (pk) => (PEOPLE[pk] || { c: '#6B7075' }).c;
+const membersOf = (k) => Object.keys(M).filter((pk) => M[pk].includes(k)).sort((a, b2) => (PEOPLE[a] ? 0 : 1) - (PEOPLE[b2] ? 0 : 1) || a.localeCompare(b2));
+const myProj = () => { const m = meKey() && M[meKey()]; const l = m ? m.filter((k) => P[k]) : []; return l.length ? l : null; };
+const mineOn = () => !!state.mine && !!myProj();
+const showP = (k) => !mineOn() || myProj().includes(k);
+const memberDots = (k, sz) => membersOf(k).map((pk, i) => '<span title="' + esc(pName(pk)) + '" style="width:' + sz + 'px;height:' + sz + 'px;border-radius:50%;background:' + pCol(pk) + ';color:#FFFFFF;font-size:' + Math.round(sz * .55) + 'px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;border:1.5px solid #FFFFFF;flex:none;box-sizing:border-box' + (i ? ';margin-left:-5px' : '') + '">' + esc(pName(pk)[0]) + '</span>').join('');
+const setMembership = (pk, list, s) => [{ op: 'put', coll: 'M', id: pk, item: { p: list }, s: s }];
+async function toggleMember(k) {
+  const me = meKey(); if (!me || !canEdit()) return;
+  const cur = (M[me] || []).slice(), i = cur.indexOf(k), inP = i >= 0;
+  if (inP) cur.splice(i, 1); else cur.push(k);
+  await syncPost(setMembership(me, cur, pName(me) + (inP ? ' left ' : ' joined ') + P[k].name));
+}
+function editMine() {
+  const me = meKey(); if (!me) { pickWho(); return; }
+  const ordered = []; THEMES.forEach(([n]) => Object.keys(P).filter((k) => P[k].theme === n).sort(byPri).forEach((k) => ordered.push(k)));
+  Object.keys(P).forEach((k) => { if (!ordered.includes(k)) ordered.push(k); });
+  const people = ['Yoni', 'Nadav', 'Dorin', 'Or', 'Shimrit'].map((n) => [n.toLowerCase(), n]);
+  const fields = [];
+  if (isAdmin()) fields.push(['pk', 'Person', 'sel', me, people]);
+  fields.push(['p', 'Tick every project you are part of', 'multi', M[me] || [], ordered.map((k) => [k, P[k].name])]);
+  openForm(isAdmin() ? 'Who is in which project' : 'My projects', fields, (v) => {
+    const pk = v.pk || me, before = M[pk] || [];
+    const add = v.p.filter((k) => !before.includes(k)), rem = before.filter((k) => !v.p.includes(k));
+    if (!add.length && !rem.length) { closeModal(); return null; }
+    const nm = (ks) => ks.map((k) => (P[k] || { name: k }).name).join(', ');
+    return setMembership(pk, v.p, pName(pk) + ' · projects' + (add.length ? ' + ' + nm(add) : '') + (rem.length ? ' − ' + nm(rem) : ''));
+  }, null, 'Your projects get a dot in the project menu, and "Only my projects" hides the rest (project list, menu and Calendar). Everyone can see who is in each project.');
+  const f = document.getElementById('mform');
+  if (f && f.elements.pk) f.elements.pk.onchange = () => { const l = M[f.elements.pk.value] || []; f.querySelectorAll('input[name="p"]').forEach((c) => { c.checked = l.includes(c.value); }); };
+}
 const newId = (pfx) => pfx + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
 function applyDoc(doc) {
@@ -307,6 +347,7 @@ function applyDoc(doc) {
   VR = (doc.VR || []).map((x) => Object.assign({}, x));
   Q = (doc.Q || []).map((x) => [x.p, x.name, x.need, x.now, x.wt, x.id, x]);
   TL = {}; (doc.TL || []).forEach((x) => (TL[x.p] = TL[x.p] || []).push(Object.assign({}, x)));
+  M = {}; (doc.M || []).forEach((x) => M[x.id] = (x.p || []).filter((k) => typeof k === 'string'));
 }
 async function syncGet(force) {
   if (!effKey()) return;
@@ -523,6 +564,7 @@ function syncBar() {
   h += '<span style="display:inline-flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:' + st[0] + '"></span>' + esc(st[1]) + '</span>';
   if (SYNC.role) {
     h += '<span>You: <b>' + esc(SYNC.who || '—') + '</b> ' + lk(pickWho, 'change') + (isAdmin() ? ' <span style="' + mono + 'font-size:10.5px;color:#6B7075">(admin)</span>' : '') + '</span>';
+    if (SYNC.who) h += lk(editMine, 'My projects' + (myProj() ? ' (' + myProj().length + ')' : ''));
     h += lk(() => { SYNC.showLog = !SYNC.showLog; if (SYNC.showLog) loadLog(); else render(); }, SYNC.showLog ? 'Hide recent changes' : 'Recent changes');
     if (isAdmin()) h += lk(applyUpdate, 'Apply PM update') + lk(adminLogout, 'Leave admin');
     else h += lk(adminLogin, 'Admin login');
@@ -549,6 +591,7 @@ function render() {
   let blocks = B.slice();
   if (who) blocks = blocks.filter((x) => whoOf(x).some((k) => who.includes(k)));
   if (ves) blocks = blocks.filter((x) => x.run && ves.includes(vesOf(x.run)));
+  if (mineOn()) { const mp = myProj(); blocks = blocks.filter((x) => mp.includes(x.p)); }
   const vbars = VR.map((r) => ({ plat: r.v === 'TBC' ? (r.fam === 'any' ? 'Vessel TBC' : r.fam + ' (vessel TBC)') : r.v, v: r.v, date: r.s, h: 0, len: (IDX[r.e] != null && IDX[r.s] != null) ? (IDX[r.e] - IDX[r.s]) * 2 + 2 : 2, p: r.p, t: r.t, prop: r.prop }));
   const bars = ves ? vbars.filter((x) => ves.includes(x.v)) : PB.concat(vbars);
 
@@ -572,6 +615,7 @@ function render() {
   h += '<button onclick="' + on(() => setState({ routine: !routineOn })) + '" aria-pressed="' + routineOn + '" style="' + chip(routineOn) + '">Routine</button>';
   h += '<button onclick="' + on(() => setState({ load: !loadOn })) + '" aria-pressed="' + loadOn + '" style="' + chip(loadOn) + '">Load</button>';
   h += '<button onclick="' + on(() => setState({ key: !state.key })) + '" aria-pressed="' + !!state.key + '" style="' + chip(!!state.key) + '">Project key</button>';
+  if (myProj()) h += '<button onclick="' + on(toggleMine) + '" aria-pressed="' + mineOn() + '" title="Show only tasks of the projects you are in" style="' + chip(mineOn()) + '">Only my projects</button>';
   if (canEdit()) h += '<button onclick="' + on(() => editBlock(null)) + '" style="' + chip(true, '#2B6CB0') + 'margin-left:auto">+ Add task</button>';
   h += '</div>';
   }
@@ -593,15 +637,16 @@ function render() {
   h += '</div>';
   if (state.key) {
     h += '<div style="background:#FFFFFF;border:1px solid #E1E2DC;border-radius:10px;padding:10px 12px;margin:-6px 0 16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px 14px;font-size:12px">';
-    THEMES.forEach(([n]) => Object.keys(P).filter((k) => P[k].theme === n).sort(byPri).forEach((k) => { h += '<button onclick="' + on(() => setState({ sel: sel === k ? null : k })) + '" style="display:flex;gap:7px;align-items:center;border:0;background:none;padding:2px 0;cursor:pointer;text-align:left;font-size:12px;color:#1B1D1F;' + (sel && sel !== k ? 'opacity:.45;' : '') + (sel === k ? 'font-weight:700;' : '') + '">' + sw(k) + '<span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(P[k].name) + '</span></button>'; }));
+    THEMES.forEach(([n]) => Object.keys(P).filter((k) => P[k].theme === n && showP(k)).sort(byPri).forEach((k) => { h += '<button onclick="' + on(() => setState({ sel: sel === k ? null : k })) + '" style="display:flex;gap:7px;align-items:center;border:0;background:none;padding:2px 0;cursor:pointer;text-align:left;font-size:12px;color:#1B1D1F;' + (sel && sel !== k ? 'opacity:.45;' : '') + (sel === k ? 'font-weight:700;' : '') + '">' + sw(k) + '<span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(P[k].name) + '</span></button>'; }));
     h += '</div>';
   }
   } else h += '<div style="margin-bottom:16px;font-size:12.5px;color:#4A4F55">' + ({ ov: sel ? 'Goals, plan, phases and milestones for one project.' : 'The whole portfolio on one screen: each project in one line, on the same timeline. Click a line for its card and plan.', pl: 'What each bioreactor vessel is booked for, and how busy it is.' })[view] + '</div>';
 
   // layout
   // narrow screens: the rail is hidden and this drop-down takes its place
-  h += '<select class="projsel" aria-label="Project" onchange="' + on(() => { const v = document.querySelector('.projsel').value; setState({ sel: v || null }); }) + '" style="margin:0 0 12px;min-height:38px;padding:6px 10px;border:1px solid #C9CBC4;border-radius:8px;background:#FFFFFF;font:inherit;font-size:13px;max-width:100%"><option value="">Project: All</option>';
-  THEMES.forEach(([n, label]) => { const ks = Object.keys(P).filter((k) => P[k].theme === n).sort(byPri); if (ks.length) h += '<optgroup label="' + esc(label) + '">' + ks.map((k) => '<option value="' + esc(k) + '"' + (sel === k ? ' selected' : '') + '>' + esc(symName(P[k].sym) + ' ' + P[k].name + ' · P' + (P[k].pri || 3)) + '</option>').join('') + '</optgroup>'; });
+  h += '<select class="projsel" aria-label="Project" onchange="' + on(() => { const v = document.querySelector('.projsel').value; if (v === '__mine') { toggleMine(); return; } setState({ sel: v || null }); }) + '" style="margin:0 0 12px;min-height:38px;padding:6px 10px;border:1px solid #C9CBC4;border-radius:8px;background:#FFFFFF;font:inherit;font-size:13px;max-width:100%"><option value="">Project: All</option>';
+  if (myProj()) h += '<option value="__mine">' + (mineOn() ? '✓ Only my projects (pick to show all)' : 'Only my projects') + '</option>';
+  THEMES.forEach(([n, label]) => { const ks = Object.keys(P).filter((k) => P[k].theme === n && showP(k)).sort(byPri); if (ks.length) h += '<optgroup label="' + esc(label) + '">' + ks.map((k) => '<option value="' + esc(k) + '"' + (sel === k ? ' selected' : '') + '>' + esc(symName(P[k].sym) + ' ' + P[k].name + ' · P' + (P[k].pri || 3)) + '</option>').join('') + '</optgroup>'; });
   h += '</select>';
   // project rail: slim (56 px) by default, ⟨⟩ expands to the full list; remembered per device
   const wide = !!state.railWide;
@@ -610,15 +655,19 @@ function render() {
   h += '<button onclick="' + on(() => { try { localStorage.setItem('novella_planner_rail', wide ? '0' : '1'); } catch (e) {} setState({ railWide: !wide }); }) + '" title="' + (wide ? 'Collapse the project menu' : 'Show project names') + '" style="' + (wide ? 'align-self:flex-end;' : '') + 'border:1px solid #E1E2DC;background:#FFFFFF;border-radius:6px;cursor:pointer;font-size:12px;line-height:1;padding:4px 7px;color:#4A4F55;margin-bottom:8px">' + (wide ? '⟨' : '⟩') + '</button>';
   if (wide) h += '<button onclick="' + on(() => setState({ sel: null })) + '" style="width:100%;min-height:40px;padding:8px 10px;border-radius:8px;cursor:pointer;font-weight:600;font-size:12.5px;text-align:left;border:1px solid ' + (sel ? '#E1E2DC' : '#1B1D1F') + ';background:' + (sel ? '#FFFFFF' : '#1B1D1F') + ';color:' + (sel ? '#1B1D1F' : '#FFFFFF') + '">All projects</button>';
   else h += '<button class="rbtn" onclick="' + on(() => setState({ sel: null })) + '" title="All projects" style="border:1px solid ' + (sel ? '#E1E2DC' : '#1B1D1F') + ';background:' + (sel ? '#FFFFFF' : '#1B1D1F') + ';color:' + (sel ? '#1B1D1F' : '#FFFFFF') + ';font-weight:700;font-size:11px">All</button>';
+  if (myProj()) {
+    if (wide) h += '<button onclick="' + on(toggleMine) + '" aria-pressed="' + mineOn() + '" style="width:100%;margin-top:6px;min-height:32px;padding:5px 10px;border-radius:8px;cursor:pointer;font-size:12px;text-align:left;border:1px solid ' + (mineOn() ? '#1B1D1F' : '#E1E2DC') + ';background:' + (mineOn() ? '#1B1D1F' : '#FFFFFF') + ';color:' + (mineOn() ? '#FFFFFF' : '#1B1D1F') + '">' + (mineOn() ? '✓ ' : '') + 'Only my projects</button>';
+    else h += '<button class="rbtn" onclick="' + on(toggleMine) + '" aria-pressed="' + mineOn() + '" title="' + (mineOn() ? 'Showing only your projects — click to show all' : 'Show only your projects') + '" style="margin-top:4px;border:1px solid ' + (mineOn() ? '#1B1D1F' : '#E1E2DC') + ';background:' + (mineOn() ? '#1B1D1F' : '#FFFFFF') + ';color:' + (mineOn() ? '#FFFFFF' : '#1B1D1F') + ';font-weight:700;font-size:11px">Me</button>';
+  }
   THEMES.forEach(([n, label]) => {
-    const ks = Object.keys(P).filter((k) => P[k].theme === n).sort(byPri);
+    const ks = Object.keys(P).filter((k) => P[k].theme === n && showP(k)).sort(byPri);
     if (!ks.length) return;
     if (wide) h += '<div style="margin-top:14px"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:#5F6368;margin-bottom:4px;line-height:1.4">' + esc(label) + '</div>';
     else h += '<div title="' + esc(label) + '" style="width:36px;margin:9px 0 5px;border-top:1px solid #D5D6D0;text-align:center;line-height:0"><span style="background:#FFFFFF;padding:0 3px;font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:#6B7075;line-height:1;position:relative;top:-1px">' + (n < 5 ? n : 'T') + '</span></div>';
     ks.forEach((k) => {
       const onp = sel === k, q = PRI[P[k].pri || 3];
-      if (wide) h += '<button onclick="' + on(() => setState({ sel: onp ? null : k })) + '" style="display:flex;gap:9px;align-items:center;width:100%;min-height:40px;padding:6px 8px;margin-bottom:2px;border-radius:8px;cursor:pointer;font-size:12.5px;color:#1B1D1F;text-align:left;border:1px solid ' + (onp ? pc(k) : 'transparent') + ';background:' + (onp ? pc(k) + '14' : 'transparent') + '">' + sw(k) + '<span style="font-weight:600;flex:1;min-width:0">' + esc(P[k].name) + '</span>' + priBadge(k) + '</button>';
-      else h += '<button class="rbtn" onclick="' + on(() => setState({ sel: onp ? null : k })) + '" title="' + esc(P[k].name + ' · ' + q[0] + ' ' + q[1]) + '" aria-pressed="' + onp + '" style="margin:2px 0;border:2px solid ' + (onp ? '#1B1D1F' : 'transparent') + ';background:transparent"><span style="width:30px;height:30px;border-radius:6px;background:' + pc(k) + ';display:flex;align-items:center;justify-content:center;' + (sel && !onp ? 'opacity:.45;' : '') + '">' + mk(k, 13) + '</span><span class="pn" style="background:' + q[3] + ';color:' + q[2] + '">' + (P[k].pri || 3) + '</span></button>';
+      if (wide) h += '<button onclick="' + on(() => setState({ sel: onp ? null : k })) + '" style="display:flex;gap:9px;align-items:center;width:100%;min-height:40px;padding:6px 8px;margin-bottom:2px;border-radius:8px;cursor:pointer;font-size:12.5px;color:#1B1D1F;text-align:left;border:1px solid ' + (onp ? pc(k) : 'transparent') + ';background:' + (onp ? pc(k) + '14' : 'transparent') + '">' + sw(k) + '<span style="font-weight:600;flex:1;min-width:0">' + esc(P[k].name) + '</span>' + (myProj() && myProj().includes(k) && !mineOn() ? '<span title="You are in this project" style="width:7px;height:7px;border-radius:50%;background:#1B1D1F;flex:none"></span>' : '') + priBadge(k) + '</button>';
+      else h += '<button class="rbtn" onclick="' + on(() => setState({ sel: onp ? null : k })) + '" title="' + esc(P[k].name + ' · ' + q[0] + ' ' + q[1] + (membersOf(k).length ? ' · ' + membersOf(k).map(pName).join(', ') : '')) + '" aria-pressed="' + onp + '" style="margin:2px 0;border:2px solid ' + (onp ? '#1B1D1F' : 'transparent') + ';background:transparent"><span style="width:30px;height:30px;border-radius:6px;background:' + pc(k) + ';display:flex;align-items:center;justify-content:center;' + (sel && !onp ? 'opacity:.45;' : '') + '">' + mk(k, 13) + '</span><span class="pn" style="background:' + q[3] + ';color:' + q[2] + '">' + (P[k].pri || 3) + '</span>' + (myProj() && myProj().includes(k) && !mineOn() ? '<span title="You are in this project" style="position:absolute;left:-2px;top:-2px;width:8px;height:8px;border-radius:50%;background:#1B1D1F;border:1.5px solid #FFFFFF"></span>' : '') + '</button>';
     });
     if (wide) h += '</div>';
   });
