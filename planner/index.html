@@ -424,47 +424,118 @@ function openForm(title, fields, onSave, onDelete, note) {
   h += '<div style="font-size:11px;color:#6B7075">Saved as ' + esc(SYNC.who || '?') + '. Everyone sees the change within a few seconds.</div></form></div>';
   const d = document.createElement('div'); d.id = 'modal'; d.innerHTML = h; document.body.appendChild(d);
   const f = document.getElementById('mform');
+  const readV = () => { const v = {}; fields.forEach(([k, , type]) => { const el = f.elements[k]; v[k] = type === 'multi' ? [...f.querySelectorAll('input[name="' + k + '"]:checked')].map((z) => z.value) : type === 'check' ? el.checked : type === 'num' ? Number(el.value) : el.value.trim(); }); return v; };
   f.onsubmit = async (e) => {
     e.preventDefault();
-    const v = {}; fields.forEach(([k, , type]) => { const el = f.elements[k]; v[k] = type === 'multi' ? [...f.querySelectorAll('input[name="' + k + '"]:checked')].map((z) => z.value) : type === 'check' ? el.checked : type === 'num' ? Number(el.value) : el.value.trim(); });
+    const v = readV();
     const ops = onSave(v); if (!ops) return;
     const m = document.getElementById('modal'); if (m) m.remove();
     await syncPost(ops); if (SYNC.pendingDoc) SYNC.pendingDoc = null;
   };
-  if (onDelete) document.getElementById('mdel').onclick = async () => { if (!confirm('Delete this item? (It stays in the Sheet backups.)')) return; const m = document.getElementById('modal'); if (m) m.remove(); await syncPost(onDelete()); };
+  if (onDelete) document.getElementById('mdel').onclick = async () => { const v = readV(), ops = onDelete(v); if (!ops || !ops.length) return; if (!confirm(ops.length > 1 ? 'Delete ' + ops.length + ' tasks (this one and the rest of the series after it)? They stay in the Sheet backups.' : 'Delete this item? (It stays in the Sheet backups.)')) return; const m = document.getElementById('modal'); if (m) m.remove(); await syncPost(ops); };
   const first = f.querySelector('input,textarea,select'); if (first) first.focus();
 }
 const clean = (o) => { Object.keys(o).forEach((k) => (o[k] === '' || o[k] === false || o[k] == null) && delete o[k]); return o; };
 
+// ---- Recurring tasks (18 Nov) ----
+// A series = ordinary B tasks that share `ser` (series id) and `rep` (rule). Each occurrence is its own task,
+// so done/blocked/notes, the log, the digest and project membership work per occurrence with no backend change.
+const REPS = [['', 'Does not repeat'], ['d', 'Every working day (Sun–Thu)'], ['w1', 'Every week'], ['w2', 'Every 2 weeks'], ['w4', 'Every 4 weeks'], ['m', 'Every month (same week + weekday)']];
+const REPN = { d: 'every working day', w1: 'weekly', w2: 'every 2 weeks', w4: 'every 4 weeks', m: 'monthly' };
+const REP_MAX = 130;
+const isoOf = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+function repDates(first, rule, until) {
+  const out = [first]; if (!rule || IDX[first] == null) return out;
+  const last = until && until < END ? until : END;
+  if (rule === 'm') {
+    const d0 = new Date(first + 'T12:00:00'), wd = d0.getDay(), nth = Math.ceil(d0.getDate() / 7);
+    for (let k = 1; out.length < REP_MAX; k++) {
+      const m = new Date(d0.getFullYear(), d0.getMonth() + k, 1, 12);
+      const d = new Date(m); d.setDate(1 + ((wd - m.getDay() + 7) % 7) + (nth - 1) * 7);
+      if (d.getMonth() !== m.getMonth()) d.setDate(d.getDate() - 7);   // no 5th weekday that month → use the last one
+      const iso = isoOf(d); if (iso > last) break; if (IDX[iso] != null) out.push(iso);
+    }
+    return out;
+  }
+  const step = { d: 1, w1: 5, w2: 10, w4: 20 }[rule] || 0; if (!step) return out;
+  for (let i = IDX[first] + step; i < DAYS.length && DAYS[i].iso <= last && out.length < REP_MAX; i += step) out.push(DAYS[i].iso);
+  return out;
+}
+const seriesOf = (x) => (x && x.ser ? B.filter((y) => y.ser === x.ser).sort((a, b2) => (a.date < b2.date ? -1 : a.date > b2.date ? 1 : (a.h || 0) - (b2.h || 0))) : []);
+const plus8w = (iso) => { const i = IDX[iso]; return i == null ? END : DAYS[Math.min(DAYS.length - 1, i + 40)].iso; };
+
 function editBlock(x, pre) {
   const isNew = !x, cur = x || Object.assign({ lane: (Object.keys(PEOPLE).find((k) => PEOPLE[k].name === SYNC.who) || 'yoni'), date: DAYS[Math.max(0, TODAY)] ? DAYS[Math.max(0, TODAY)].iso : START, h: 0, len: 1, p: state.sel || 'team', t: '' }, pre || {});
-  openForm(isNew ? 'Add a task' : 'Edit task', [
+  const ser = seriesOf(x), after = x ? ser.filter((y) => y.date > x.date || (y.date === x.date && y.id !== x.id && (y.h || 0) > (x.h || 0))) : [];
+  const inSer = ser.length > 1 || !!(x && x.ser);
+  const fields = [
     ['title', 'Title — shown on the calendar (max ' + TITLE_MAX + ' characters)', 'text', ttl(cur), TITLE_MAX],
     ['t', 'Details — shown when you hover (optional)', 'area', cur.t && cur.t !== ttl(cur) ? cur.t : '', 3],
     ['who', 'Who (tick everyone involved)', 'multi', whoOf(cur), PERSON_OPTS()],
     ['p', 'Project', 'sel', cur.p, PROJ_OPTS()],
-    ['date', 'Day (Sun–Thu)', 'date', cur.date],
+    ['date', 'Day (Sun–Thu)' + (inSer ? ' — of this occurrence' : ''), 'date', cur.date],
     ['h', 'Starts', 'sel', cur.h, [[0, 'Morning'], [1, 'Afternoon']]],
     ['len', 'Length (half-days)', 'num', cur.len],
-    ['st', 'Status', 'sel', cur.st || '', [['', 'Planned'], ['done', 'Done ✓'], ['blocked', 'Blocked / slipping ⚠']]],
-    ['note', 'Note (why it moved, what’s blocking…)', 'text', cur.note || ''],
-    ['prop', 'Proposed — not confirmed yet (dashed)', 'check', !!cur.prop]
-  ], (v) => {
+    ...(inSer ? [['scope', 'Apply changes to', 'sel', 'one', [['one', 'This occurrence only'], ['rest', 'This and the following ' + after.length + ' in the series']]]] : []),
+    ['rep', 'Repeat', 'sel', cur.rep || '', REPS],
+    ['until', 'Repeat until (last possible day)', 'date', inSer && ser.length ? ser[ser.length - 1].date : plus8w(cur.date)]
+  ];
+  fields.push(['st', 'Status' + (inSer ? ' (this occurrence only)' : ''), 'sel', cur.st || '', [['', 'Planned'], ['done', 'Done ✓'], ['blocked', 'Blocked / slipping ⚠']]],
+    ['note', 'Note (why it moved, what’s blocking…)' + (inSer ? ' — this occurrence only' : ''), 'text', cur.note || ''],
+    ['prop', 'Proposed — not confirmed yet (dashed)', 'check', !!cur.prop]);
+  const note = inSer ? 'Repeating task: ' + ser.length + ' occurrence(s), ' + (REPN[cur.rep] || 'repeating') + ', ' + ser[0].date + ' → ' + ser[ser.length - 1].date + '. Choose “This and the following” to change the rest of the series too (Repeat / Until only apply then).' : null;
+  const whatOf = (it) => namesOf(it) + ' · ' + DAYS[IDX[it.date]].day + ' ' + DAYS[IDX[it.date]].date + ' · ' + it.title;
+  openForm(isNew ? 'Add a task' : inSer ? 'Edit repeating task' : 'Edit task', fields, (v) => {
     if (!v.title) { alert('Give the task a short title.'); return null; }
     if (!v.who || !v.who.length) { alert('Tick at least one person.'); return null; }
     v.lane = v.who[0]; v.with = v.who.slice(1); delete v.who;
     if (!v.t) v.t = v.title;
     if (IDX[v.date] == null) { alert('Pick a working day (Sun–Thu) between ' + START + ' and ' + END + '.'); return null; }
-    const item = clean(Object.assign({}, isNew ? {} : x, v, { h: Number(v.h), len: Math.max(1, v.len || 1) }));
-    if (!item.with || !item.with.length) delete item.with;
-    delete item.id; delete item.by; delete item.at;
-    const id = isNew ? newId('b') : x.id;
-    const what = namesOf(item) + ' · ' + DAYS[IDX[item.date]].day + ' ' + DAYS[IDX[item.date]].date + ' · ' + item.title;
-    let s = what;
-    if (!isNew) { const ch = []; if (x.date !== item.date || x.h !== item.h) ch.push('moved from ' + x.date + (x.h ? ' PM' : ' AM')); if (namesOf(x) !== namesOf(item)) ch.push('was ' + namesOf(x)); if ((x.st || '') !== (item.st || '')) ch.push(item.st ? 'marked ' + item.st : 'reopened'); if (ch.length) s += ' (' + ch.join('; ') + ')'; }
-    if (item.note) s += ' — ' + item.note;
-    return [{ op: 'put', coll: 'B', id, item, s }];
-  }, isNew ? null : () => [{ op: 'del', coll: 'B', id: x.id, s: namesOf(x) + ' · ' + x.date + ' · ' + ttl(x) }]);
+    const scope = v.scope || 'one', rule = v.rep, until = v.until; delete v.scope; delete v.rep; delete v.until;
+    const base = clean(Object.assign({}, isNew ? {} : x, v, { h: Number(v.h), len: Math.max(1, v.len || 1) }));
+    if (!base.with || !base.with.length) delete base.with;
+    delete base.id; delete base.by; delete base.at;
+    // ----- single task (no repeat, or editing one occurrence) -----
+    const single = (isNew && !rule) || (!isNew && !inSer && !rule) || (inSer && scope === 'one');
+    if (single) {
+      const item = base, id = isNew ? newId('b') : x.id;
+      let s = whatOf(item) + (inSer ? ' (one occurrence of a repeating task)' : '');
+      if (!isNew) { const ch = []; if (x.date !== item.date || x.h !== item.h) ch.push('moved from ' + x.date + (x.h ? ' PM' : ' AM')); if (namesOf(x) !== namesOf(item)) ch.push('was ' + namesOf(x)); if ((x.st || '') !== (item.st || '')) ch.push(item.st ? 'marked ' + item.st : 'reopened'); if (ch.length) s += ' (' + ch.join('; ') + ')'; }
+      if (item.note) s += ' — ' + item.note;
+      return [{ op: 'put', coll: 'B', id, item, s }];
+    }
+    // ----- series: create, convert, or change this + following -----
+    if (until && until < v.date) { alert('“Repeat until” is before the first day.'); return null; }
+    const dates = repDates(v.date, rule, until);
+    if (rule && dates.length < 2) { alert('That repeat gives only one day before “Repeat until”. Move “Repeat until” later, or choose “Does not repeat”.'); return null; }
+    const old = isNew ? [] : inSer ? [x].concat(after) : [x];
+    const serId = rule ? ((x && x.ser) || newId('s')) : null;
+    const share = Object.assign({}, base); delete share.st; delete share.note;   // status + note stay per occurrence
+    const ops = [], used = new Set(), rest = old.slice(1);
+    const pick = (iso) => rest.find((y) => !used.has(y.id) && y.date === iso) || rest.find((y) => !used.has(y.id) && y.st !== 'done' && !dates.includes(y.date));
+    dates.forEach((iso, k) => {
+      const prev = k === 0 ? old[0] : pick(iso); if (prev) used.add(prev.id);
+      const item = k === 0 ? Object.assign({}, base) : Object.assign({}, share, prev && prev.date === iso ? clean({ st: prev.st, note: prev.note }) : {});
+      item.date = iso; if (serId) { item.ser = serId; item.rep = rule; } else { delete item.ser; delete item.rep; }
+      let id = prev ? prev.id : (isNew && k === 0 ? newId('b') : (serId || 'b') + '-' + iso.replace(/-/g, '') + (item.h ? 'p' : 'a'));
+      if (!prev && B.some((y) => y.id === id)) id = newId('b');
+      const s = k === 0 ? whatOf(item) + (rule ? ' — repeats ' + REPN[rule] + ' to ' + dates[dates.length - 1] + ' (' + dates.length + ' tasks)' : ' — no longer repeats') : '↻ ' + whatOf(item);
+      ops.push({ op: 'put', coll: 'B', id, item, s });
+    });
+    rest.filter((y) => !used.has(y.id)).forEach((y) => {
+      if (y.st === 'done') { const it = Object.assign({}, y); delete it.id; delete it.by; delete it.at; delete it.ser; delete it.rep; ops.push({ op: 'put', coll: 'B', id: y.id, item: it, s: '↻ kept (done), no longer in the series · ' + namesOf(y) + ' · ' + y.date + ' · ' + ttl(y) }); }
+      else ops.push({ op: 'del', coll: 'B', id: y.id, s: '↻ removed from series · ' + namesOf(y) + ' · ' + y.date + ' · ' + ttl(y) });
+    });
+    if (ops.length > 12 && !confirm('This writes ' + ops.length + ' calendar changes (' + dates.length + ' occurrence(s)' + (ops.some((o) => o.op === 'del') ? ', ' + ops.filter((o) => o.op === 'del').length + ' removed' : '') + '). Go ahead?')) return null;
+    return ops;
+  }, isNew ? null : (v) => {
+    const one = [{ op: 'del', coll: 'B', id: x.id, s: namesOf(x) + ' · ' + x.date + ' · ' + ttl(x) }];
+    if (!inSer || (v && v.scope) !== 'rest') return one;
+    return one.concat(after.map((y) => ({ op: 'del', coll: 'B', id: y.id, s: '↻ ' + namesOf(y) + ' · ' + y.date + ' · ' + ttl(y) })));
+  }, note);
+  // Repeat-until only matters when a repeat is chosen; grey it out otherwise
+  const f = document.getElementById('mform');
+  if (f) { const sync = () => { const off = !f.elements.rep.value || (f.elements.scope && f.elements.scope.value === 'one'); f.elements.until.disabled = off; f.elements.until.parentNode.style.opacity = off ? .45 : 1; if (f.elements.scope) { f.elements.rep.disabled = f.elements.scope.value === 'one'; f.elements.rep.parentNode.style.opacity = f.elements.rep.disabled ? .45 : 1; } }; f.elements.rep.onchange = sync; if (f.elements.scope) f.elements.scope.onchange = sync; sync(); }
 }
 function editQ(row) {
   const isNew = !row, x = row ? row[6] : { p: state.sel || 'team', name: '', need: '', now: '' };
@@ -727,7 +798,7 @@ function render() {
       const x = it.x, pp = PEOPLE[x.lane] || PEOPLE.yoni, c = (P[x.p] || { c: '#999' }).c, dim = sel && x.p !== sel, hit = sel && x.p === sel;
       const done = x.st === 'done', blk = x.st === 'blocked';
       const m1 = mk(x.p, 9);
-      h += '<div class="blk' + (x.prop ? ' prop' : '') + (m1 ? ' hasmk' : '') + '"' + (canEdit() ? ' onclick="' + on(() => editBlock(x)) + '"' : '') + ' title="' + esc(ttl(x) + '\n' + namesOf(x) + ' · ' + (P[x.p] || { name: '?' }).name + ' · ' + fmt(x.len * .5) + ' d' + (x.prop ? ' · proposed' : '') + (x.st ? ' · ' + x.st : '') + (x.t && x.t !== ttl(x) ? '\n\n' + x.t : '') + (x.note ? '\n\nNote: ' + x.note : '') + (x.by ? '\n\nlast change: ' + x.by : '') + (canEdit() ? '\n(click to edit)' : '')) + '" style="' + pos + 'background:' + c + ';opacity:' + (dim ? .15 : done ? .5 : 1) + ';' + (canEdit() ? 'cursor:pointer;' : '') + (hit ? 'box-shadow:0 0 0 2px #FFFFFF,0 0 0 4px ' + c + ';' : '') + (blk ? 'box-shadow:0 0 0 3px #E53E3E;' : '') + '"><span style="display:flex;flex:none">' + whoOf(x).map((k, i) => { const q = PEOPLE[k] || pp; return '<span class="dot" style="background:' + q.c + (i ? ';margin-left:-7px' : '') + '">' + (i === 0 && done ? '✓' : i === 0 && blk ? '!' : q.name[0]) + '</span>'; }).join('') + '</span><span class="tx"' + (done ? ' style="text-decoration:line-through"' : '') + '>' + esc(ttl(x)) + (x.note ? ' <span style="opacity:.8">✎</span>' : '') + '</span>' + (m1 ? '<span class="mk">' + m1 + '</span>' : '') + '</div>';
+      h += '<div class="blk' + (x.prop ? ' prop' : '') + (m1 ? ' hasmk' : '') + '"' + (canEdit() ? ' onclick="' + on(() => editBlock(x)) + '"' : '') + ' title="' + esc(ttl(x) + '\n' + namesOf(x) + ' · ' + (P[x.p] || { name: '?' }).name + ' · ' + fmt(x.len * .5) + ' d' + (x.prop ? ' · proposed' : '') + (x.st ? ' · ' + x.st : '') + (x.ser ? ' · repeats ' + (REPN[x.rep] || '') : '') + (x.t && x.t !== ttl(x) ? '\n\n' + x.t : '') + (x.note ? '\n\nNote: ' + x.note : '') + (x.by ? '\n\nlast change: ' + x.by : '') + (canEdit() ? '\n(click to edit)' : '')) + '" style="' + pos + 'background:' + c + ';opacity:' + (dim ? .15 : done ? .5 : 1) + ';' + (canEdit() ? 'cursor:pointer;' : '') + (hit ? 'box-shadow:0 0 0 2px #FFFFFF,0 0 0 4px ' + c + ';' : '') + (blk ? 'box-shadow:0 0 0 3px #E53E3E;' : '') + '"><span style="display:flex;flex:none">' + whoOf(x).map((k, i) => { const q = PEOPLE[k] || pp; return '<span class="dot" style="background:' + q.c + (i ? ';margin-left:-7px' : '') + '">' + (i === 0 && done ? '✓' : i === 0 && blk ? '!' : q.name[0]) + '</span>'; }).join('') + '</span><span class="tx"' + (done ? ' style="text-decoration:line-through"' : '') + '>' + (x.ser ? '<span style="opacity:.85">↻ </span>' : '') + esc(ttl(x)) + (x.note ? ' <span style="opacity:.8">✎</span>' : '') + '</span>' + (m1 ? '<span class="mk">' + m1 + '</span>' : '') + '</div>';
     });
     h += '</div>';
 
