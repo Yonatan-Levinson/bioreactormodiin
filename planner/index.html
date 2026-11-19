@@ -83,9 +83,9 @@ const todayIso = (() => { const d = new Date(); return d.getFullYear() + '-' + S
 const TODAY = IDX[todayIso] ?? -1;
 
 let state = {};
-try { const v0 = localStorage.getItem('novella_planner_view'); if (v0) state.view = v0 === 'tl' ? 'ov' : v0; state.railWide = localStorage.getItem('novella_planner_rail') === '1'; } catch (e) {}
+try { const v0 = localStorage.getItem('novella_planner_view'); if (v0) state.view = v0 === 'tl' ? 'ov' : v0; state.railWide = localStorage.getItem('novella_planner_rail') === '1'; const z0 = localStorage.getItem('novella_planner_zoom'); if (z0) state.zoom = Number(z0) || 0; } catch (e) {}
 const H = [];
-function setState(p) { state = Object.assign({}, state, p); if (p.view) { try { localStorage.setItem('novella_planner_view', p.view); } catch (e) {} } render(); }
+function setState(p) { state = Object.assign({}, state, p); if (p.view) { try { localStorage.setItem('novella_planner_view', p.view); } catch (e) {} } if ('zoom' in p) { try { localStorage.setItem('novella_planner_zoom', String(p.zoom || 0)); } catch (e) {} } render(); }
 function on(fn) { H.push(fn); return 'H[' + (H.length - 1) + ']()'; }
 function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 const priBadge = (k, big) => { const q = PRI[P[k].pri || 3]; return '<span title="Priority: ' + q[1] + '" style="flex:none;font-family:\'IBM Plex Mono\',monospace;font-size:' + (big ? 11 : 10) + 'px;font-weight:600;padding:1px 6px;border-radius:4px;background:' + q[3] + ';color:' + q[2] + ';white-space:nowrap">' + q[0] + '</span>'; };
@@ -405,7 +405,7 @@ function closeModal() {
 function openForm(title, fields, onSave, onDelete, note) {
   closeModal();
   const inp = 'width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid #C9CBC4;border-radius:6px;font:inherit;font-size:13px;background:#FFFFFF';
-  let h = '<div style="position:fixed;inset:0;background:rgba(20,22,24,.35);display:flex;align-items:flex-start;justify-content:center;padding:6vh 16px;z-index:50;overflow:auto" onclick="if(event.target===this)closeModal()">';
+  let h = '<div style="position:fixed;inset:0;background:rgba(20,22,24,.35);display:flex;align-items:flex-start;justify-content:center;padding:6vh 16px;z-index:50;overflow:auto"">'; // 19 Nov: no click-outside close (Yoni lost half-filled forms); use ×, Cancel or Esc
   h += '<form id="mform" style="background:#FFFFFF;border-radius:12px;padding:18px 20px;width:520px;max-width:100%;box-shadow:0 12px 40px rgba(0,0,0,.2);font-family:\'IBM Plex Sans\',system-ui,sans-serif;font-size:13px;color:#1B1D1F;display:flex;flex-direction:column;gap:10px">';
   h += '<div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0;font-size:16px">' + esc(title) + '</h2><button type="button" onclick="closeModal()" style="border:0;background:none;font-size:20px;cursor:pointer;line-height:1">×</button></div>';
   if (note) h += '<div style="font-size:11.5px;color:#5F6368">' + esc(note) + '</div>';
@@ -435,6 +435,7 @@ function openForm(title, fields, onSave, onDelete, note) {
   if (onDelete) document.getElementById('mdel').onclick = async () => { const v = readV(), ops = onDelete(v); if (!ops || !ops.length) return; if (!confirm(ops.length > 1 ? 'Delete ' + ops.length + ' tasks (this one and the rest of the series after it)? They stay in the Sheet backups.' : 'Delete this item? (It stays in the Sheet backups.)')) return; const m = document.getElementById('modal'); if (m) m.remove(); await syncPost(ops); };
   const first = f.querySelector('input,textarea,select'); if (first) first.focus();
 }
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && document.getElementById('modal')) closeModal(); });
 const clean = (o) => { Object.keys(o).forEach((k) => (o[k] === '' || o[k] === false || o[k] == null) && delete o[k]); return o; };
 
 // ---- Recurring tasks (18 Nov) ----
@@ -483,9 +484,10 @@ function editBlock(x, pre) {
   fields.push(['st', 'Status' + (inSer ? ' (this occurrence only)' : ''), 'sel', cur.st || '', [['', 'Planned'], ['done', 'Done ✓'], ['blocked', 'Blocked / slipping ⚠']]],
     ['note', 'Note (why it moved, what’s blocking…)' + (inSer ? ' — this occurrence only' : ''), 'text', cur.note || ''],
     ['prop', 'Proposed — not confirmed yet (dashed)', 'check', !!cur.prop]);
+  if (inSer) fields.push(['propScope', 'Change dashed / solid for', 'sel', 'one', [['one', 'This occurrence only'], ['all', 'The whole series (all ' + ser.length + ')']]]);
   const note = inSer ? 'Repeating task: ' + ser.length + ' occurrence(s), ' + (REPN[cur.rep] || 'repeating') + ', ' + ser[0].date + ' → ' + ser[ser.length - 1].date + '. Choose “This and the following” to change the rest of the series too (Repeat / Until only apply then).' : null;
   const whatOf = (it) => namesOf(it) + ' · ' + DAYS[IDX[it.date]].day + ' ' + DAYS[IDX[it.date]].date + ' · ' + it.title;
-  openForm(isNew ? 'Add a task' : inSer ? 'Edit repeating task' : 'Edit task', fields, (v) => {
+  const build = (v) => {
     if (!v.title) { alert('Give the task a short title.'); return null; }
     if (!v.who || !v.who.length) { alert('Tick at least one person.'); return null; }
     v.lane = v.who[0]; v.with = v.who.slice(1); delete v.who;
@@ -528,6 +530,21 @@ function editBlock(x, pre) {
     });
     if (ops.length > 12 && !confirm('This writes ' + ops.length + ' calendar changes (' + dates.length + ' occurrence(s)' + (ops.some((o) => o.op === 'del') ? ', ' + ops.filter((o) => o.op === 'del').length + ' removed' : '') + '). Go ahead?')) return null;
     return ops;
+  };
+  openForm(isNew ? 'Add a task' : inSer ? 'Edit repeating task' : 'Edit task', fields, (v) => {
+    const ps = v.propScope; delete v.propScope;
+    const ops = build(v); if (!ops) return null;
+    // 18 Nov: proposed ↔ confirmed can be applied to the whole series, whatever the scope of the other changes
+    if (inSer && ps === 'all' && !!v.prop !== !!x.prop) {
+      ser.forEach((y) => {
+        const o = ops.find((z) => z.id === y.id);
+        if (o) { if (o.op === 'put') { if (v.prop) o.item.prop = 1; else delete o.item.prop; } return; }
+        if (!!y.prop === !!v.prop) return;
+        const it = Object.assign({}, y); delete it.id; delete it.by; delete it.at; if (v.prop) it.prop = 1; else delete it.prop;
+        ops.push({ op: 'put', coll: 'B', id: y.id, item: it, s: '↻ ' + namesOf(y) + ' · ' + y.date + ' · ' + ttl(y) + (v.prop ? ' — marked proposed (whole series)' : ' — confirmed (whole series)') });
+      });
+    }
+    return ops;
   }, isNew ? null : (v) => {
     const one = [{ op: 'del', coll: 'B', id: x.id, s: namesOf(x) + ' · ' + x.date + ' · ' + ttl(x) }];
     if (!inSer || (v && v.scope) !== 'rest') return one;
@@ -535,7 +552,8 @@ function editBlock(x, pre) {
   }, note);
   // Repeat-until only matters when a repeat is chosen; grey it out otherwise
   const f = document.getElementById('mform');
-  if (f) { const sync = () => { const off = !f.elements.rep.value || (f.elements.scope && f.elements.scope.value === 'one'); f.elements.until.disabled = off; f.elements.until.parentNode.style.opacity = off ? .45 : 1; if (f.elements.scope) { f.elements.rep.disabled = f.elements.scope.value === 'one'; f.elements.rep.parentNode.style.opacity = f.elements.rep.disabled ? .45 : 1; } }; f.elements.rep.onchange = sync; if (f.elements.scope) f.elements.scope.onchange = sync; sync(); }
+  if (f) { const sync = () => { const off = !f.elements.rep.value || (f.elements.scope && f.elements.scope.value === 'one'); f.elements.until.disabled = off; f.elements.until.parentNode.style.opacity = off ? .45 : 1; if (f.elements.scope) { f.elements.rep.disabled = f.elements.scope.value === 'one'; f.elements.rep.parentNode.style.opacity = f.elements.rep.disabled ? .45 : 1; } }; f.elements.rep.onchange = sync; if (f.elements.scope) f.elements.scope.onchange = sync; sync();
+    if (f.elements.propScope) { const row = f.elements.propScope.parentNode, pv = () => { const ch = f.elements.prop.checked !== !!cur.prop; row.style.display = ch ? '' : 'none'; if (!ch) f.elements.propScope.value = 'one'; }; f.elements.prop.addEventListener('change', pv); pv(); } }
 }
 function editQ(row) {
   const isNew = !row, x = row ? row[6] : { p: state.sel || 'team', name: '', need: '', now: '' };
@@ -684,9 +702,23 @@ function render() {
   // view-specific toolbar (its own row, so the view tabs above never move)
   if (cal) {
   h += '<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px">';
+  // 19 Nov: zoom — 1 week · 2 weeks · All (the old scrolling list). Remembered per device.
+  const zm = state.zoom || 0, wk0 = state.wk0 == null ? CURW : state.wk0;
+  h += '<div role="group" aria-label="Weeks shown" style="display:flex;border:1px solid #C9CBC4;border-radius:999px;overflow:hidden;background:#FFFFFF">';
+  [[1, '1 week'], [2, '2 weeks'], [0, 'All']].forEach(([z, l], i) => { h += '<button onclick="' + on(() => setState({ zoom: z, wk0: null })) + '" aria-pressed="' + (zm === z) + '" style="' + seg(zm === z, i === 0, 74) + 'min-height:34px;font-size:12.5px;font-weight:500">' + l + '</button>'; });
+  h += '</div>';
+  if (zm) {
+    const pg = (d) => on(() => setState({ wk0: Math.min(NWEEKS - zm, Math.max(0, wk0 + d)) }));
+    h += '<button onclick="' + pg(-zm) + '" title="Earlier"' + (wk0 <= 0 ? ' disabled' : '') + ' style="' + chip(false) + 'padding:0 12px' + (wk0 <= 0 ? ';opacity:.4' : '') + '">◀</button>';
+    h += '<button onclick="' + on(() => setState({ wk0: null })) + '" style="' + chip(false) + '">Today</button>';
+    h += '<button onclick="' + pg(zm) + '" title="Later"' + (wk0 + zm >= NWEEKS ? ' disabled' : '') + ' style="' + chip(false) + 'padding:0 12px' + (wk0 + zm >= NWEEKS ? ';opacity:.4' : '') + '">▶</button>';
+    const d1 = DAYS[wk0 * 5], d2 = DAYS[Math.min(DAYS.length - 1, (wk0 + zm) * 5 - 1)];
+    if (d1 && d2) h += '<span style="display:inline-block;min-width:190px;font-size:12.5px;color:#4A4F55;font-weight:600">' + esc(d1.date) + ' – ' + esc(d2.date) + (wk0 === CURW ? ' · this week' : '') + '</span>';
+  } else {
   h += '<button onclick="' + on(() => { const el = document.getElementById('wk' + Math.max(0, Math.floor(TODAY / 5))); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }) + '" style="' + chip(false) + '">Today</button>';
+  }
   h += '<button onclick="' + on(() => setState({ plat: !platOn })) + '" aria-pressed="' + platOn + '" style="' + chip(platOn) + '">Equipment strip</button>';
-  h += '<button onclick="' + on(() => setState({ past: !state.past })) + '" aria-pressed="' + !!state.past + '" style="' + chip(!!state.past) + '">Past weeks</button>';
+  if (!(state.zoom || 0)) h += '<button onclick="' + on(() => setState({ past: !state.past })) + '" aria-pressed="' + !!state.past + '" style="' + chip(!!state.past) + '">Past weeks</button>';
   h += '<button onclick="' + on(() => setState({ routine: !routineOn })) + '" aria-pressed="' + routineOn + '" style="' + chip(routineOn) + '">Routine</button>';
   h += '<button onclick="' + on(() => setState({ load: !loadOn })) + '" aria-pressed="' + loadOn + '" style="' + chip(loadOn) + '">Load</button>';
   h += '<button onclick="' + on(() => setState({ key: !state.key })) + '" aria-pressed="' + !!state.key + '" style="' + chip(!!state.key) + '">Project key</button>';
@@ -759,7 +791,7 @@ function render() {
   if (!Object.keys(P).length) h += '<section style="background:#FFFFFF;border:1px solid #E1E2DC;border-radius:12px;padding:28px;text-align:center;color:#4A4F55;font-size:14px">' + (!effKey() ? 'Open the planner once with the team link (ask Yoni for it). After that this address works on its own.' : SYNC.status === 'empty' ? 'The planner sheet is empty.' : SYNC.status === 'error' ? 'Couldn’t load the plan: ' + esc(SYNC.err) : 'Loading the plan…') + '</section>';
   else if (view === 'ov') h += renderOverview(sel);
   else if (view === 'pl') h += renderPlatforms(sel);
-  else for (let w = state.past ? 0 : CURW; w < NWEEKS; w++) {
+  else for (let zm = state.zoom || 0, w0 = zm ? Math.min(Math.max(0, NWEEKS - zm), state.wk0 == null ? CURW : state.wk0) : (state.past ? 0 : CURW), w = w0, wEnd = zm ? Math.min(NWEEKS, w0 + zm) : NWEEKS, rowH = zm === 1 ? 64 : zm === 2 ? 46 : 34; w < wEnd; w++) {
     const lo = w * 10, hi = lo + 10;
     const items = [];
     blocks.forEach((x) => {
@@ -779,7 +811,7 @@ function render() {
     for (let i = 0; i < 10; i++) h += '<div style="grid-column:' + (i + 1) + ';grid-row:2;font-family:\'IBM Plex Mono\',monospace;font-size:9.5px;color:#6B7075;padding:0 0 4px 8px;' + (i % 2 ? '' : 'border-left:1px solid #E4E4DF;') + '">' + (i % 2 ? 'PM' : 'AM') + '</div>';
     h += '</div>';
 
-    h += '<div style="display:grid;grid-template-columns:repeat(10,minmax(0,1fr));grid-template-rows:repeat(' + nRows + ',minmax(34px,auto))">';
+    h += '<div style="display:grid;grid-template-columns:repeat(10,minmax(0,1fr));grid-template-rows:repeat(' + nRows + ',minmax(' + rowH + 'px,auto))">';
     for (let i = 0; i < 5; i++) {
       const di = w * 5 + i;
       h += '<div style="grid-column:' + (i * 2 + 1) + ' / span 2;grid-row:1 / span ' + nRows + ';border-left:1px solid #E4E4DF;background:' + (di === TODAY ? '#FFF7E3' : (di < TODAY ? '#FAFAF8' : 'transparent')) + '"></div>';
