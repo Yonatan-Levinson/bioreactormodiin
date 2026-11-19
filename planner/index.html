@@ -235,7 +235,8 @@ function renderOverview(sel) { return sel && P[sel] ? renderProject(sel) : rende
 
 function renderPlatforms(sel) {
   const LBL = 170, ax = ganttAxis(LBL), mono = 'font-family:\'IBM Plex Mono\',monospace;';
-  let h = '<section style="background:#FFFFFF;border:1px solid #E1E2DC;border-radius:12px;overflow-x:auto"><div style="min-width:1000px;padding:10px 12px 14px">' + ax.h;
+  let h = canEdit() ? '<div style="display:flex;justify-content:flex-end;margin-bottom:-6px"><button onclick="' + on(() => editRun(null)) + '" style="min-height:36px;padding:0 14px;border-radius:999px;cursor:pointer;font-size:12.5px;border:1px solid #15803D;background:#15803D;color:#FFFFFF;font-weight:500">+ New run</button></div>' : '';
+  h += '<section style="background:#FFFFFF;border:1px solid #E1E2DC;border-radius:12px;overflow-x:auto"><div style="min-width:1000px;padding:10px 12px 14px">' + ax.h;
   const lanes = VESSELS.concat(VR.some((r) => r.v === 'TBC') ? ['TBC'] : []);
   lanes.forEach((v, i) => {
     const runs = VR.filter((r) => r.v === v), tbc = v === 'TBC';
@@ -246,7 +247,7 @@ function renderPlatforms(sel) {
     runs.forEach((r) => {
       const c = pc(r.p), l = ax.pct(r.s), w = Math.max(ax.pct(r.e, 1) - l, 0.6), dim = sel && r.p !== sel;
       const lab = (r.hold ? 'Held: ' : '') + r.t + (tbc ? ' · needs ' + r.fam : '');
-      h += '<div title="' + esc(lab + ' — ' + r.s + ' → ' + r.e + (r.prop ? ' (proposed)' : '')) + '" style="position:absolute;left:' + l + '%;width:' + w + '%;top:5px;bottom:5px;border-radius:5px;background:' + (r.hold ? 'repeating-linear-gradient(135deg,' + c + '33 0 6px,#FFFFFF 6px 12px);border:2px solid ' + c : c) + ';opacity:' + (dim ? .2 : 1) + ';color:' + (r.hold ? '#1B1D1F' : '#FFFFFF') + ';font-size:10.5px;font-weight:600;padding:0 6px;display:flex;align-items:center;gap:5px;overflow:hidden;white-space:nowrap;' + (r.prop ? 'outline:2px dashed rgba(255,255,255,.85);outline-offset:-4px;' : '') + '">' + mk(r.p, 8, r.hold ? c : '#FFFFFF') + esc(lab) + '</div>';
+      h += '<div' + (canEdit() ? ' onclick="' + on(() => editRun(r)) + '"' : '') + ' title="' + esc(lab + ' — ' + r.s + ' → ' + r.e + (r.prop ? ' (proposed)' : '')) + '" style="position:absolute;left:' + l + '%;width:' + w + '%;top:5px;bottom:5px;border-radius:5px;background:' + (r.hold ? 'repeating-linear-gradient(135deg,' + c + '33 0 6px,#FFFFFF 6px 12px);border:2px solid ' + c : c) + ';opacity:' + (dim ? .2 : 1) + ';color:' + (r.hold ? '#1B1D1F' : '#FFFFFF') + ';font-size:10.5px;font-weight:600;padding:0 6px;display:flex;align-items:center;gap:5px;overflow:hidden;white-space:nowrap;' + (r.prop ? 'outline:2px dashed rgba(255,255,255,.85);outline-offset:-4px;' : '') + '">' + mk(r.p, 8, r.hold ? c : '#FFFFFF') + esc(lab) + '</div>';
     });
     h += '</div></div>';
   });
@@ -465,6 +466,122 @@ function repDates(first, rule, until) {
 const seriesOf = (x) => (x && x.ser ? B.filter((y) => y.ser === x.ser).sort((a, b2) => (a.date < b2.date ? -1 : a.date > b2.date ? 1 : (a.h || 0) - (b2.h || 0))) : []);
 const plus8w = (iso) => { const i = IDX[iso]; return i == null ? END : DAYS[Math.min(DAYS.length - 1, i + 40)].iso; };
 
+// ---- Bioreactor runs (19 Nov) ----
+// A run (VR item) plans its own work: pick vessel, inoculation day and length; the template below generates
+// the half-day tasks (B items with run + step). Daily sampling is background: shown on the run band, no task.
+// PLACEHOLDER TEMPLATE — replace with Nadav's real steps/leads. Leads are in working days (Sun–Thu).
+const RUN_TPL = {
+  pre: [ { k: 'media', lead: -2, h: 0, len: 1, ttl: 'media prep', t: 'Media prep for the fill' },
+         { k: 'vessel', lead: -1, h: 0, len: 2, ttl: 'vessel+autoclave', t: 'Vessel prep, assemblies, autoclave' },
+         { k: 'inoc', lead: 0, h: 0, len: 1, ttl: 'inoculate', t: 'Inoculation' } ],
+  cycle: [ { k: 'refill', lead: -1, h: 1, len: 1, ttl: 'refill media', t: 'Fresh media for the dilution' },
+           { k: 'harv', lead: 0, h: 0, len: 1, ttl: 'harvest', t: 'Partial harvest + dilution' } ],
+  end: [ { k: 'end', lead: 0, h: 0, len: 2, ttl: 'final harvest', t: 'Final harvest + teardown / cleaning' } ]
+};
+const addCal = (iso, n) => { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return isoOf(d); };
+const wdBefore = (iso) => { for (let i = 0; i < 7; i++) { const z = addCal(iso, -i); if (IDX[z] != null) return z; } return null; }; // Fri/Sat → Thursday before
+const addWd = (iso, n) => { const i = IDX[iso]; return i == null || !DAYS[i + n] ? null : DAYS[i + n].iso; };
+const runId = (r) => r.rid || r.t || '?';
+const runEnd = (r) => r.e;
+function runSteps(r) {
+  const out = [], rid = runId(r), push = (st, key, base, n) => { const date = st.lead ? addWd(base, st.lead) : base; if (date) out.push({ step: key, date, h: st.h, len: st.len, title: (rid + ' ' + st.ttl + (n ? ' #' + n : '')).slice(0, TITLE_MAX), t: rid + ' — ' + st.t + (n ? ' (cycle ' + n + ')' : '') }); };
+  if (!r.inoc || IDX[r.inoc] == null) return out;
+  RUN_TPL.pre.forEach((st) => push(st, st.k, r.inoc));
+  if (r.mode === 'semi' && r.cyc > 0) for (let n = 1; ; n++) { const d = addCal(r.inoc, n * r.cyc); if (d >= r.e) break; const hd = wdBefore(d); if (!hd || hd <= r.inoc) continue; RUN_TPL.cycle.forEach((st) => push(st, st.k + '#' + n, hd, n)); if (n > 60) break; }
+  const ed = wdBefore(r.e); if (ed) RUN_TPL.end.forEach((st) => push(st, st.k, ed));
+  return out.filter((x) => !(r.skip || []).includes(x.step)).sort((a, b2) => (a.date < b2.date ? -1 : a.date > b2.date ? 1 : a.h - b2.h));
+}
+const stepLabel = (x) => DAYS[IDX[x.date]].day + ' ' + DAYS[IDX[x.date]].date + (x.h ? ' PM' : ' AM') + (x.len > 1 ? ' (' + fmt(x.len / 2) + ' d)' : '') + ' · ' + x.title;
+// Bring a run's generated tasks in line with the run. Done tasks and hand-moved (pin) tasks are never touched.
+function runOps(vid, r, steps) {
+  const ops = [], have = B.filter((b) => b.run === vid && b.step), want = {};
+  const ppl = { lane: r.lane || 'nadav' }; if (r.with && r.with.length) ppl.with = r.with;
+  steps.forEach((x) => {
+    want[x.step] = 1;
+    const ex = have.find((b) => b.step === x.step);
+    const item = Object.assign({}, ppl, { date: x.date, h: x.h, len: x.len, p: r.p, title: x.title, t: x.t, run: vid, step: x.step }, r.prop ? { prop: 1 } : {});
+    if (!ex) { ops.push({ op: 'put', coll: 'B', id: vid + '-' + x.step.replace('#', '-'), item, s: runId(r) + ' · ' + stepLabel(x) + ' (new, from run)' }); return; }
+    if (ex.st === 'done' || ex.pin) return;
+    const it = Object.assign({}, ex, item); if (!r.prop) delete it.prop; if (!it.with) delete it.with; delete it.id; delete it.by; delete it.at;
+    const same = ['date', 'h', 'len', 'title', 'lane', 'p', 'prop'].every((k) => (ex[k] || '') === (it[k] || '')) && JSON.stringify(ex.with || []) === JSON.stringify(it.with || []);
+    if (!same) ops.push({ op: 'put', coll: 'B', id: ex.id, item: it, s: runId(r) + ' · ' + stepLabel(x) + (ex.date !== it.date ? ' (moved from ' + ex.date + ')' : ' (updated)') });
+  });
+  have.forEach((b) => { if (!want[b.step] && b.st !== 'done' && !b.pin) ops.push({ op: 'del', coll: 'B', id: b.id, s: runId(r) + ' · ' + b.date + ' · ' + ttl(b) + ' (no longer in the run)' }); });
+  return ops;
+}
+function editRun(x) {
+  const isNew = !x, legacy = !!x && !x.inoc;
+  const t0 = DAYS[Math.max(0, TODAY + 1)] || DAYS[0];
+  const cur = x ? Object.assign({}, x) : { v: 'TBC', p: P['bpd-baseline'] ? 'bpd-baseline' : (state.sel || Object.keys(P)[0]), mode: 'semi', inoc: t0.iso, wk: 4, cyc: 7, lane: 'nadav', prop: 1, gen: 1 };
+  if (legacy) { cur.inoc = IDX[cur.s] != null ? cur.s : wdBefore(cur.s) || cur.s; cur.wk = Math.max(1, Math.round((Date.parse(cur.e) - Date.parse(cur.inoc)) / (7 * 864e5))); cur.rid = cur.t; cur.mode = cur.mode || 'batch'; cur.cyc = cur.cyc || 7; }
+  const fields = [
+    ['rid', 'Run ID (e.g. DG7)', 'text', cur.rid || '', 12],
+    ['v', 'Vessel', 'sel', cur.v, VESSELS.map((v) => [v, v]).concat([['TBC', 'Not assigned yet']])],
+    ['p', 'Project', 'sel', cur.p, PROJ_OPTS()],
+    ['mode', 'Mode', 'sel', cur.mode, [['semi', 'Semi-continuous (harvest + dilute every cycle)'], ['batch', 'Batch']]],
+    ['inoc', 'Inoculation day (Sun–Thu)', 'date', cur.inoc],
+    ['wk', 'Length (weeks)', 'num', cur.wk || 4],
+    ['cyc', 'Semi-continuous: harvest every … days', 'num', cur.cyc || 7],
+    ['who', 'Who does the run’s work (first ticked = owner)', 'multi', [cur.lane || 'nadav'].concat(cur.with || []), PERSON_OPTS()],
+    ['gen', 'Plan the run’s tasks from the template (prep, harvests, teardown)', 'check', legacy ? false : cur.gen !== 0],
+    ['prop', 'Proposed — not confirmed yet (dashed)', 'check', !!cur.prop],
+    ['note', 'Note', 'text', cur.note || '']
+  ];
+  const note = isNew ? 'You plan the run; it plans its own tasks. You’ll see the list before anything is saved. Daily sampling shows on the run band, not as tasks. Harvests that fall on Fri/Sat move to the Thursday before.'
+    : 'Changing the day or length moves/adds/removes the run’s open tasks. Tasks marked done, or moved by hand, are left alone.' + (legacy ? ' This run was entered before runs could plan tasks: tick the template box only if you want tasks generated now.' : '');
+  const build = (v) => {
+    if (!v.rid) { alert('Give the run an ID, e.g. DG7.'); return null; }
+    if (IDX[v.inoc] == null) { alert('Inoculation must be a working day (Sun–Thu) between ' + START + ' and ' + END + '.'); return null; }
+    if (!v.who.length) { alert('Tick who does the run’s work.'); return null; }
+    const wk = Math.max(1, v.wk || 1), cyc = Math.max(1, v.cyc || 7);
+    const r = clean(Object.assign({}, x || {}, { rid: v.rid, t: v.rid + (v.note ? ' — ' + v.note : ''), v: v.v, fam: /^V/.test(v.v) ? 'Dasgip' : /^MF/.test(v.v) ? 'MF' : (x && x.fam) || 'any', p: v.p, mode: v.mode, inoc: v.inoc, wk, cyc, e: addCal(v.inoc, wk * 7), lane: v.who[0], with: v.who.slice(1), prop: v.prop ? 1 : 0, gen: v.gen ? 1 : 0, note: v.note }));
+    if (!r.with || !r.with.length) delete r.with; delete r.id; delete r.by; delete r.at;
+    if (!r.gen) r.gen = 0;
+    return r;
+  };
+  const vrOp = (vid, r, steps, extra) => { const r2 = Object.assign({}, r); const first = steps.length ? steps[0].date : r.inoc; r2.s = first < r.inoc ? first : r.inoc; return { op: 'put', coll: 'VR', id: vid, item: r2, s: 'Run ' + runId(r) + ' · ' + r.v + ' · inoculate ' + r.inoc + ' · ' + r.wk + ' wk' + (r.mode === 'semi' ? ', harvest every ' + r.cyc + ' d' : '') + (extra || '') }; };
+  openForm(isNew ? 'New bioreactor run' : 'Run ' + runId(cur), fields, (v) => {
+    const r = build(v); if (!r) return null;
+    if (isNew) {
+      if (!r.gen) return [vrOp(newId('vr-'), r, [])];
+      const all = runSteps(Object.assign({}, r, { skip: [] }));
+      const pn = (PEOPLE[r.lane] || { name: r.lane }).name;
+      openForm('Run ' + r.rid + ' needs ' + all.length + ' tasks', [['pick', 'Untick anything you don’t want. All go on ' + pn + '’s calendar' + (r.with ? ' (with others ticked)' : '') + (r.prop ? ', dashed' : '') + '. You can move or reassign each one afterwards.', 'multi', all.map((x) => x.step), all.map((x) => [x.step, stepLabel(x)])]], (w) => {
+        const r2 = Object.assign({}, r, { skip: all.filter((x) => !w.pick.includes(x.step)).map((x) => x.step) }); if (!r2.skip.length) delete r2.skip;
+        const vid = newId('vr-'), steps = runSteps(r2);
+        return [vrOp(vid, r2, steps, ' · ' + steps.length + ' tasks')].concat(runOps(vid, r2, steps));
+      }, null, 'Placeholder steps until Nadav’s real template is in. Daily sampling is not a task: it shows on the run band.');
+      return null;
+    }
+    const steps = r.gen ? runSteps(r) : [];
+    const ops = r.gen ? runOps(x.id, r, steps) : [];
+    return [vrOp(x.id, r, steps, ops.length ? ' · ' + ops.length + ' task change(s)' : '')].concat(ops);
+  }, isNew ? null : () => {
+    const open = B.filter((b) => b.run === x.id && b.step && b.st !== 'done');
+    if (open.length && !confirm('Also delete the run’s ' + open.length + ' open task(s)? (Done tasks are kept.)')) return null;
+    return [{ op: 'del', coll: 'VR', id: x.id, s: 'Run ' + runId(x) + ' deleted' }].concat(open.map((b) => ({ op: 'del', coll: 'B', id: b.id, s: runId(x) + ' · ' + b.date + ' · ' + ttl(b) + ' (run deleted)' })));
+  }, note);
+}
+// Run band: one slim bar per live run (inoculation → end) at the top of each calendar week.
+function runBand(w, sel, who, ves) {
+  const d0 = DAYS[w * 5].iso, d4 = DAYS[w * 5 + 4].iso;
+  const runs = VR.filter((r) => !r.hold && (r.inoc || r.s) <= d4 && r.e >= d0 && (!ves || ves.includes(r.v)) && (!who || (r.lane ? [r.lane].concat(r.with || []).some((k) => who.includes(k)) : true)))
+    .sort((a, b2) => ((a.inoc || a.s) < (b2.inoc || b2.s) ? -1 : 1));
+  if (!runs.length) return '';
+  let h = '<div style="display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:2px 0;margin:0 0 4px">';
+  runs.forEach((r, ri) => {
+    const st = r.inoc || r.s; let a = -1, z = -1;
+    for (let i = 0; i < 5; i++) { const iso = DAYS[w * 5 + i].iso; if (iso >= st && iso <= r.e) { if (a < 0) a = i; z = i; } }
+    if (a < 0) return;
+    const c = pc(r.p), dim = sel && r.p !== sel, lbl = runId(r) + ' · ' + (r.v === 'TBC' ? 'vessel TBC' : r.v);
+    const tip = 'Run ' + runId(r) + ' on ' + (r.v === 'TBC' ? 'vessel not assigned' : r.v) + ' — ' + (P[r.p] || { name: '?' }).name + '\nInoculation ' + st + ' → end ' + r.e + (r.mode === 'semi' ? ' · harvest every ' + r.cyc + ' d' : r.mode ? ' · batch' : '') + (r.lane ? ' · ' + [r.lane].concat(r.with || []).map((k) => (PEOPLE[k] || { name: k }).name).join(' + ') : '') + '\nDaily sampling (~30 min) — background, not on the calendar' + (r.prop ? '\nProposed (dashed)' : '') + (canEdit() ? '\nClick to edit the run' : '');
+    h += '<div title="' + esc(tip) + '"' + (canEdit() ? ' onclick="' + on(() => editRun(r)) + '"' : '') + ' style="grid-column:' + (a * 2 + 1) + ' / span ' + ((z - a + 1) * 2) + ';grid-row:' + (ri + 1) + ';display:grid;grid-template-columns:repeat(' + (z - a + 1) + ',1fr);height:18px;margin:0 2px;border-radius:' + (st >= d0 ? '9px' : '0') + ' ' + (r.e <= d4 ? '9px 9px' : '0 0') + ' ' + (st >= d0 ? '9px' : '0') + ';background:' + c + '1F;border:1px ' + (r.prop ? 'dashed' : 'solid') + ' ' + c + ';color:' + c + ';font-size:10px;font-weight:600;line-height:16px;cursor:' + (canEdit() ? 'pointer' : 'default') + ';opacity:' + (dim ? .25 : 1) + ';overflow:hidden">';
+    for (let i = a; i <= z; i++) { const dn = Math.round((Date.parse(DAYS[w * 5 + i].iso) - Date.parse(st)) / 864e5); h += '<span style="padding:0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis' + (i > a ? ';border-left:1px dotted ' + c + '66;font-weight:500' : '') + '">' + (i === a ? esc(lbl) + ' · ' : '') + 'd' + dn + '</span>'; }
+    h += '</div>';
+  });
+  return h + '</div>';
+}
+
 function editBlock(x, pre) {
   const isNew = !x, cur = x || Object.assign({ lane: (Object.keys(PEOPLE).find((k) => PEOPLE[k].name === SYNC.who) || 'yoni'), date: DAYS[Math.max(0, TODAY)] ? DAYS[Math.max(0, TODAY)].iso : START, h: 0, len: 1, p: state.sel || 'team', t: '' }, pre || {});
   const ser = seriesOf(x), after = x ? ser.filter((y) => y.date > x.date || (y.date === x.date && y.id !== x.id && (y.h || 0) > (x.h || 0))) : [];
@@ -501,6 +618,7 @@ function editBlock(x, pre) {
     const single = (isNew && !rule) || (!isNew && !inSer && !rule) || (inSer && scope === 'one');
     if (single) {
       const item = base, id = isNew ? newId('b') : x.id;
+      if (!isNew && x.step && (x.date !== item.date || x.h !== item.h || x.len !== item.len)) item.pin = 1;   // hand-moved run task: the run won't move it again
       let s = whatOf(item) + (inSer ? ' (one occurrence of a repeating task)' : '');
       if (!isNew) { const ch = []; if (x.date !== item.date || x.h !== item.h) ch.push('moved from ' + x.date + (x.h ? ' PM' : ' AM')); if (namesOf(x) !== namesOf(item)) ch.push('was ' + namesOf(x)); if ((x.st || '') !== (item.st || '')) ch.push(item.st ? 'marked ' + item.st : 'reopened'); if (ch.length) s += ' (' + ch.join('; ') + ')'; }
       if (item.note) s += ' — ' + item.note;
@@ -722,7 +840,7 @@ function render() {
   h += '<button onclick="' + on(() => setState({ routine: !routineOn })) + '" aria-pressed="' + routineOn + '" style="' + chip(routineOn) + '">Routine</button>';
   h += '<button onclick="' + on(() => setState({ load: !loadOn })) + '" aria-pressed="' + loadOn + '" style="' + chip(loadOn) + '">Load</button>';
   h += '<button onclick="' + on(() => setState({ key: !state.key })) + '" aria-pressed="' + !!state.key + '" style="' + chip(!!state.key) + '">Project key</button>';
-  if (canEdit()) h += '<button onclick="' + on(() => editBlock(null)) + '" style="' + chip(true, '#2B6CB0') + 'margin-left:auto">+ Add task</button>';
+  if (canEdit()) h += '<button onclick="' + on(() => editBlock(null)) + '" style="' + chip(true, '#2B6CB0') + 'margin-left:auto">+ Add task</button><button onclick="' + on(() => editRun(null)) + '" style="' + chip(true, '#15803D') + '">+ New run</button>';
   h += '</div>';
   }
 
@@ -811,6 +929,7 @@ function render() {
     for (let i = 0; i < 10; i++) h += '<div style="grid-column:' + (i + 1) + ';grid-row:2;font-family:\'IBM Plex Mono\',monospace;font-size:9.5px;color:#6B7075;padding:0 0 4px 8px;' + (i % 2 ? '' : 'border-left:1px solid #E4E4DF;') + '">' + (i % 2 ? 'PM' : 'AM') + '</div>';
     h += '</div>';
 
+    h += runBand(w, sel, who, ves);
     h += '<div style="display:grid;grid-template-columns:repeat(10,minmax(0,1fr));grid-template-rows:repeat(' + nRows + ',minmax(' + rowH + 'px,auto))">';
     for (let i = 0; i < 5; i++) {
       const di = w * 5 + i;
